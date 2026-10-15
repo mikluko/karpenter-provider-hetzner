@@ -36,6 +36,19 @@ The `HCloudNodeClass` CRD and `zz_generated.deepcopy.go` are generated from the 
 - Fill out the pull request template, including how you verified the change.
 - All status checks must pass before merge.
 
+## Releases
+
+`CHANGELOG.md` decides the version. To release, rename `## [Unreleased]` to
+`## [X.Y.Z] - YYYY-MM-DD`, open a fresh `## [Unreleased]` above it, and merge
+on the date you wrote.
+
+On a push to `main`, `release-cut.yaml` runs CI, then tags the commit `vX.Y.Z`
+when the newest entry names a version no tag carries. The tag starts
+`release-roll.yaml`, which builds, signs, and publishes the image and the chart,
+and creates the GitHub release last. A tag whose `release-roll.yaml` run failed
+is not cut again: re-run that run. Run by hand, `release-roll.yaml` builds the
+newest version without publishing it.
+
 ## Reporting bugs and requesting features
 
 Use the issue templates. For security issues, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.

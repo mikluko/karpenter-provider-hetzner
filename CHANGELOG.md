@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The chart is signed with cosign, as the image already was.
+
+### Changed
+
+- Release images and charts are signed with the certificate identity `https://github.com/mikluko/karpenter-provider-hetzner/.github/workflows/release-roll.yaml@refs/tags/v<version>`.
+
 ## [0.1.0] - 2026-10-15
 
 The first release, taken from upstream karpenter-provider-hetzner 3.0.1. Its
