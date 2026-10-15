@@ -1,14 +1,14 @@
 # nameOverride replaces the chart name used to build resource names and the
 # app.kubernetes.io/name label. fullnameOverride replaces the generated resource
 # name outright -- set it to "karpenter-provider-hetzner" to keep the names used
-# by chart releases before 3.0.0 if your release is not named that already.
+# by upstream chart releases before 3.0.0 if your release is not named that already.
 nameOverride: ""
 fullnameOverride: ""
 
 replicas: 1
 
 image:
-  repository: ghcr.io/stubbi/karpenter-provider-hetzner
+  repository: ghcr.io/mikluko/karpenter-provider-hetzner
   # Empty tracks the chart's appVersion, which the release workflow sets from
   # the git tag and publishes as a matching image tag. Pinning "latest" here
   # meant a released chart floated onto whatever was newest.

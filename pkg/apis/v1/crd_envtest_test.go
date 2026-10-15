@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 package v1_test
 
 import (
@@ -43,7 +46,7 @@ func TestCRD_KubeletAdmission(t *testing.T) {
 			"spec": map[string]any{
 				"locations":     []any{"nbg1"},
 				"networkID":     int64(1),
-				"imageSelector": map[string]any{"family": "ubuntu"},
+				"imageSelector": map[string]any{"family": "debian"},
 				"kubelet":       kubelet,
 			},
 		}})

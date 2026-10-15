@@ -5,24 +5,23 @@ Thanks for your interest in improving `karpenter-provider-hetzner`. This documen
 ## Development environment
 
 - Go (see the `go` directive in [`go.mod`](go.mod)).
-- `make`, `git`, `docker` (for image builds), and `helm` (for chart changes).
+- [`task`](https://taskfile.dev), `git`, and `helm` (for chart changes).
 - A Hetzner Cloud API token is only needed for end-to-end testing, not for unit tests.
 
 ## Common tasks
 
 ```bash
-make test        # run unit + controller tests with the race detector
-make lint        # run golangci-lint
-make generate    # regenerate the CRD and deepcopy from the Go types
-make build       # build the controller binary into ./bin
-make docker-build TAG=dev
+task test        # run unit + controller tests with the race detector
+task lint        # run golangci-lint
+task generate    # regenerate the CRD and deepcopy from the Go types
+task build       # build the controller binary into ./bin
 ```
 
-CI runs `make test`, `golangci-lint`, `make generate-verify` (fails if generated files are stale), and the controller tests. Run these locally before opening a pull request.
+CI runs `task test`, `golangci-lint`, `task generate-verify` (fails if generated files are stale), and the controller tests. Run these locally before opening a pull request.
 
 ## Code generation
 
-The `HCloudNodeClass` CRD and `zz_generated.deepcopy.go` are generated from the API types in `pkg/apis/v1` by `controller-gen`. If you change those types, run `make generate` and commit the regenerated files. CI will fail if they are out of date.
+The `HCloudNodeClass` CRD and `zz_generated.deepcopy.go` are generated from the API types in `pkg/apis/v1` by `controller-gen`. If you change those types, run `task generate` and commit the regenerated files. CI will fail if they are out of date.
 
 ## Testing conventions
 

@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 package v1
 
 import (
@@ -139,15 +142,15 @@ type UserDataSecretReference struct {
 }
 
 type ImageSelector struct {
-	// +kubebuilder:validation:Enum=talos;ubuntu
+	// +kubebuilder:validation:Enum=debian
 	Family string `json:"family"`
 
 	// +optional
 	Version string `json:"version,omitempty"`
 
 	// Selector is an hcloud label selector applied when listing images, e.g.
-	// {"caph-image-name": "talos-v1.13.3-gvisor"}. Use it to pin the exact image
-	// (version plus baked extensions) instead of fuzzy description matching.
+	// {"role": "k0s-worker"}. Use it to pin an exact snapshot instead of fuzzy
+	// description matching.
 	// +optional
 	Selector map[string]string `json:"selector,omitempty"`
 }

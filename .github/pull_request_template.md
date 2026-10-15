@@ -10,9 +10,9 @@
 ## Verification
 
 <!-- How did you verify this works? Commands + results. -->
-- [ ] `make test` passes
-- [ ] `make lint` passes
-- [ ] `make generate-verify` passes (CRD/deepcopy up to date)
+- [ ] `task test` passes
+- [ ] `task lint` passes
+- [ ] `task generate-verify` passes (CRD/deepcopy up to date)
 - [ ] Added/updated tests for the change
 
 ## Notes

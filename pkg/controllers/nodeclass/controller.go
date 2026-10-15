@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 package nodeclass
 
 import (
@@ -19,9 +22,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	apiv1 "github.com/paperclipinc/karpenter-provider-hetzner/pkg/apis/v1"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/metrics"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/providers/imagefamily"
+	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/metrics"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
 )
 
 const resyncInterval = 5 * time.Minute
@@ -332,7 +335,7 @@ func (c *Controller) resolveImages(ctx context.Context, nc *apiv1.HCloudNodeClas
 	// hcloud image IDs are global (not per-location), so resolve one image per
 	// architecture. Resolve each architecture independently: many clusters only
 	// have an image for a single arch (e.g. an all-amd64 cluster has no arm64
-	// Talos snapshot), and a NodeClass is usable as long as at least one arch
+	// snapshot), and a NodeClass is usable as long as at least one arch
 	// resolves.
 	archs := []hcloud.Architecture{hcloud.ArchitectureX86, hcloud.ArchitectureARM}
 	out := make([]imageResolution, 0, len(archs))
