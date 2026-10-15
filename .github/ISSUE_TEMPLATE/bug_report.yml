@@ -4,19 +4,19 @@ labels: [bug]
 body:
   - type: markdown
     attributes:
-      value: Thanks for the report. Please do not include secrets (tokens, kubeconfigs) in logs.
+      value: Redact secrets, tokens, and kubeconfigs from everything below.
   - type: textarea
     id: what-happened
     attributes:
       label: What happened?
-      description: A clear description of the bug and what you expected instead.
+      description: What you saw, and what you expected instead.
     validations:
       required: true
   - type: textarea
     id: repro
     attributes:
-      label: Steps to reproduce
-      description: NodePool/HCloudNodeClass YAML and the sequence that triggers it.
+      label: Node class and node pool
+      description: The HCloudNodeClass and NodePool involved, and the steps that trigger the problem.
       render: yaml
     validations:
       required: true
@@ -24,17 +24,17 @@ body:
     id: logs
     attributes:
       label: Controller logs
-      description: Relevant controller logs (redact secrets).
       render: shell
   - type: input
     id: provider-version
     attributes:
-      label: Provider version / image tag
+      label: Provider version
+      description: The chart or image version, for example 0.1.0.
     validations:
       required: true
   - type: input
     id: k8s-version
     attributes:
-      label: Kubernetes & Karpenter version
+      label: Kubernetes version
     validations:
       required: true
