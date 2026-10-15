@@ -1,0 +1,186 @@
+name: Roll release
+run-name: ${{ github.event_name == 'push' && format('Releasing {0}', github.ref_name) || format('Dry run of a release from {0}', github.ref_name) }}
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-roll
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/mikluko/karpenter-provider-hetzner
+  CHART_REPOSITORY: oci://ghcr.io/mikluko/charts
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      due: ${{ steps.version.outputs.due }}
+      version: ${{ steps.version.outputs.version }}
+      tag: v${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.changelog.outputs.prerelease }}
+      notes: ${{ steps.changelog.outputs.notes }}
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: changelog
+        uses: mikluko/action-changelog@v1
+        with:
+          due-prerelease: true
+      - id: version
+        name: Version
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          NEWEST: ${{ steps.changelog.outputs.version }}
+          DUE: ${{ steps.changelog.outputs.due }}
+          DUE_REASON: ${{ steps.changelog.outputs['due-reason'] }}
+        run: |
+          due=$DUE
+          reason=$DUE_REASON
+          version=$NEWEST
+          publish=false
+          if [ "$EVENT" = push ]; then
+            version=${REF_NAME#v}
+            if [ -z "$NEWEST" ] || [ "$REF_NAME" != "v$NEWEST" ]; then
+              echo "::error::tag $REF_NAME is not the newest version CHANGELOG.md names, ${NEWEST:-which is none}"
+              exit 1
+            fi
+            due=true
+            publish=true
+            reason="$REF_NAME is the newest version CHANGELOG.md names"
+          fi
+          echo "::notice::${reason:-$version is due}"
+          {
+            echo "due=$due"
+            echo "version=$version"
+            echo "publish=$publish"
+          } >>"$GITHUB_OUTPUT"
+
+  image:
+    needs: plan
+    if: needs.plan.outputs.due == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v4
+      - if: needs.plan.outputs.publish == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.plan.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.plan.outputs.version }}
+      - id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: ${{ needs.plan.outputs.publish == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - if: needs.plan.outputs.publish == 'true'
+        uses: sigstore/cosign-installer@v3
+      - name: Sign
+        if: needs.plan.outputs.publish == 'true'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "$IMAGE@$DIGEST"
+      - if: needs.plan.outputs.publish == 'true'
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
+          artifact-name: sbom-${{ needs.plan.outputs.tag }}.spdx.json
+          output-file: sbom-${{ needs.plan.outputs.tag }}.spdx.json
+          upload-release-assets: false
+
+  chart:
+    needs: [plan, image]
+    if: needs.plan.outputs.due == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: azure/setup-helm@v5
+      - name: Package
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          helm package charts/karpenter-provider-hetzner \
+            --version "$VERSION" --app-version "$VERSION" \
+            --destination "$RUNNER_TEMP/chart"
+      - if: needs.plan.outputs.publish == 'true'
+        uses: sigstore/cosign-installer@v3
+      - name: Push and sign
+        if: needs.plan.outputs.publish == 'true'
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          ACTOR: ${{ github.actor }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$TOKEN" | helm registry login ghcr.io --username "$ACTOR" --password-stdin
+          printf '%s' "$TOKEN" | cosign login ghcr.io --username "$ACTOR" --password-stdin
+          helm push "$RUNNER_TEMP/chart/karpenter-provider-hetzner-$VERSION.tgz" "$CHART_REPOSITORY" 2>&1 | tee "$RUNNER_TEMP/push.log"
+          digest=$(awk '$1 == "Digest:" { print $2 }' "$RUNNER_TEMP/push.log")
+          test -n "$digest"
+          cosign sign --yes "${CHART_REPOSITORY#oci://}/karpenter-provider-hetzner@$digest"
+
+  # Last, so a release exists only once every artifact it names does.
+  release:
+    needs: [plan, image, chart]
+    if: ${{ !cancelled() && !failure() && needs.plan.outputs.due == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Notes
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+          NOTES: ${{ needs.plan.outputs.notes }}
+        run: |
+          printf '%s\n' "$NOTES" >"$RUNNER_TEMP/notes.md"
+          echo "release $TAG from $GITHUB_SHA:"
+          cat "$RUNNER_TEMP/notes.md"
+      - name: Release
+        if: needs.plan.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          PRERELEASE: ${{ needs.plan.outputs.prerelease }}
+        run: |
+          flags=
+          if [ "$PRERELEASE" = true ]; then flags=--prerelease; fi
+          gh release create "$TAG" --verify-tag --title "$TAG" \
+            --notes-file "$RUNNER_TEMP/notes.md" $flags

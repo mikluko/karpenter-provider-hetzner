@@ -92,4 +92,4 @@ With every check green, merge the whole stack: `gh stack merge --yes --merge`. T
 of one PR is no stack to GitHub: merge it with `gh pr merge <number> --merge`. When a check fails or the
 merge is refused, leave the stack open and comment on the top PR what failed.
 
-The release workflow tags and publishes once the merge reaches `main`.
+Once the merge reaches `main`, `release-cut.yaml` tags it and `release-roll.yaml` publishes it.
