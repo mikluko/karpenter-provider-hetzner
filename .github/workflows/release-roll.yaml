@@ -105,7 +105,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - if: needs.plan.outputs.publish == 'true'
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@v4.1.2
       - name: Sign
         if: needs.plan.outputs.publish == 'true'
         env:
@@ -140,7 +140,7 @@ jobs:
             --version "$VERSION" --app-version "$VERSION" \
             --destination "$RUNNER_TEMP/chart"
       - if: needs.plan.outputs.publish == 'true'
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@v4.1.2
       - name: Push and sign
         if: needs.plan.outputs.publish == 'true'
         env:
