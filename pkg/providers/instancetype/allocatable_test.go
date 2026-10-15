@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 package instancetype
 
 import (
@@ -13,7 +16,7 @@ import (
 	"sigs.k8s.io/karpenter/pkg/cloudprovider"
 	"sigs.k8s.io/yaml"
 
-	apiv1 "github.com/paperclipinc/karpenter-provider-hetzner/pkg/apis/v1"
+	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
 )
 
 // listOne lists a single server type through the provider for the given node class.

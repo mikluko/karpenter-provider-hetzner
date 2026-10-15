@@ -1,8 +1,5 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/paperclipinc/karpenter-provider-hetzner/security/advisories/new
-    about: Report security issues privately — do not open a public issue.
-  - name: Question / discussion
-    url: https://github.com/paperclipinc/karpenter-provider-hetzner/discussions
-    about: Ask usage questions or discuss ideas.
+    url: https://github.com/mikluko/karpenter-provider-hetzner/security/advisories/new
+    about: Report security issues privately, not in a public issue.

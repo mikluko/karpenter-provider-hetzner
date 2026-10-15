@@ -67,16 +67,15 @@ spec:
                 properties:
                   family:
                     enum:
-                    - talos
-                    - ubuntu
+                    - debian
                     type: string
                   selector:
                     additionalProperties:
                       type: string
                     description: |-
                       Selector is an hcloud label selector applied when listing images, e.g.
-                      {"caph-image-name": "talos-v1.13.3-gvisor"}. Use it to pin the exact image
-                      (version plus baked extensions) instead of fuzzy description matching.
+                      {"role": "k0s-worker"}. Use it to pin an exact snapshot instead of fuzzy
+                      description matching.
                     type: object
                   version:
                     type: string

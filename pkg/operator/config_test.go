@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 package operator
 
 import "testing"
@@ -10,13 +13,13 @@ func TestLoadConfig_RequiresClusterName(t *testing.T) {
 }
 
 func TestLoadConfig_ReadsClusterName(t *testing.T) {
-	t.Setenv("CLUSTER_NAME", "paperclip-prod")
+	t.Setenv("CLUSTER_NAME", "tugarin")
 	cfg, err := LoadConfig()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.ClusterName != "paperclip-prod" {
-		t.Errorf("got cluster name %q, want paperclip-prod", cfg.ClusterName)
+	if cfg.ClusterName != "tugarin" {
+		t.Errorf("got cluster name %q, want tugarin", cfg.ClusterName)
 	}
 }
 

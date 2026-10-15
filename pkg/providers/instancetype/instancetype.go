@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 package instancetype
 
 import (
@@ -16,8 +19,8 @@ import (
 	"sigs.k8s.io/karpenter/pkg/cloudprovider"
 	"sigs.k8s.io/karpenter/pkg/scheduling"
 
-	apiv1 "github.com/paperclipinc/karpenter-provider-hetzner/pkg/apis/v1"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/metrics"
+	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/metrics"
 )
 
 const cacheTTL = 6 * time.Hour

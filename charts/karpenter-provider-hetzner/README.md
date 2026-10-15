@@ -15,9 +15,11 @@ helm install karpenter-provider-hetzner ./charts/karpenter-provider-hetzner \
 
 `clusterName` is required; the controller fails to start without it.
 
-## Upgrading to 2.0.0 (CRD `v1`)
+## Upgrading from upstream chart 1.x (CRD `v1`)
 
-Chart 2.0.0 graduates the `HCloudNodeClass` CRD from
+The chart versions in this section and the next are upstream's; see the
+[upstream changelog](../../CHANGELOG.upstream.md). Upstream chart 2.0.0
+graduates the `HCloudNodeClass` CRD from
 `karpenter.hetzner.cloud/v1alpha1` to the stable `/v1`. There is **no
 conversion webhook**, so this is a breaking change:
 
@@ -32,16 +34,17 @@ kubectl apply -f your-nodeclasses-v1.yaml
 Existing `v1alpha1` objects are not migrated automatically; recreate them under
 `v1` (the spec is unchanged — only the `apiVersion` differs).
 
-## Upgrading to chart 3.0.0
+## Upgrading from upstream chart 2.x
 
-Resource names and label selectors are now scoped to the Helm release. Before
-3.0.0 every object carried the hardcoded name `karpenter-provider-hetzner` and
+Resource names and label selectors are scoped to the Helm release. Before
+upstream chart 3.0.0 every object carried the hardcoded name
+`karpenter-provider-hetzner` and
 every selector matched only `app.kubernetes.io/name`, so a second release in the
 same namespace could not be installed at all, and two cluster-scoped RBAC
 objects of the same name collided even across namespaces.
 
 **A `helm upgrade` from 2.x fails without a manual step.** A Deployment's
-`.spec.selector` is immutable, and this release adds `app.kubernetes.io/instance`
+`.spec.selector` is immutable, and this chart adds `app.kubernetes.io/instance`
 to it:
 
 ```
@@ -54,7 +57,7 @@ Delete the Deployment first, keeping its pods running while you do, then upgrade
 
 ```bash
 kubectl delete deployment karpenter-provider-hetzner -n <namespace> --cascade=orphan
-helm upgrade <release> oci://ghcr.io/stubbi/charts/karpenter-provider-hetzner --version 3.0.1 --reuse-values
+helm upgrade <release> oci://ghcr.io/mikluko/charts/karpenter-provider-hetzner --version 0.1.0 --reuse-values
 kubectl delete pod -n <namespace> -l app.kubernetes.io/name=karpenter-provider-hetzner \
   --field-selector status.phase=Running --ignore-not-found  # orphaned old pods
 ```
@@ -88,7 +91,7 @@ unchanged.
 | `nameOverride` | `""` | Replaces the chart name in generated names and `app.kubernetes.io/name` |
 | `fullnameOverride` | `""` | Replaces the generated resource name outright |
 | `replicas` | `1` | Controller replicas |
-| `image.repository` | `ghcr.io/stubbi/karpenter-provider-hetzner` | Image |
+| `image.repository` | `ghcr.io/mikluko/karpenter-provider-hetzner` | Image |
 | `image.tag` | `""` | Empty tracks the chart appVersion; pin a tag in production |
 | `image.pullPolicy` | `IfNotPresent` | Image pull policy |
 | `auth.secretRef.name` | `hcloud-token` | Secret holding the Hetzner token |

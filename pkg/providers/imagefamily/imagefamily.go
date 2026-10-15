@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 package imagefamily
 
 import (
@@ -10,7 +13,7 @@ import (
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	apiv1 "github.com/paperclipinc/karpenter-provider-hetzner/pkg/apis/v1"
+	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
 )
 
 // labelSelectorString renders an hcloud label selector from a map (sorted for
@@ -71,19 +74,17 @@ func NewProvider(client ImageClient) *Provider {
 }
 
 // Resolve returns the best matching image for the given selector and architecture.
-// Supported families: "ubuntu", "talos".
+// The only supported family is "debian".
 func (p *Provider) Resolve(ctx context.Context, selector apiv1.ImageSelector, arch hcloud.Architecture) (*hcloud.Image, error) {
 	log := logf.FromContext(ctx)
 	ls := labelSelectorString(selector.Selector)
 	var img *hcloud.Image
 	var err error
 	switch strings.ToLower(selector.Family) {
-	case "ubuntu":
-		img, err = p.resolveUbuntu(ctx, selector.Version, arch, ls)
-	case "talos":
-		img, err = p.resolveTalos(ctx, selector.Version, arch, ls)
+	case "debian":
+		img, err = p.resolveSystem(ctx, "debian", selector.Version, arch, ls)
 	default:
-		return nil, newPermanentError("unsupported image family %q: must be one of ubuntu, talos", selector.Family)
+		return nil, newPermanentError("unsupported image family %q: must be debian", selector.Family)
 	}
 	if err != nil {
 		return nil, err
@@ -96,49 +97,50 @@ func (p *Provider) Resolve(ctx context.Context, selector apiv1.ImageSelector, ar
 	return img, nil
 }
 
-// resolveUbuntu finds a system image whose description contains "ubuntu" and optionally the given version,
-// falling back to the newest labelled snapshot when a label selector is set.
-// Returns the first matching image.
-func (p *Provider) resolveUbuntu(ctx context.Context, version string, arch hcloud.Architecture, ls string) (*hcloud.Image, error) {
+// resolveSystem returns the newest system image whose description contains family
+// and, if set, version. With a label selector and no matching system image, it
+// returns the newest labelled snapshot instead.
+func (p *Provider) resolveSystem(ctx context.Context, family, version string, arch hcloud.Architecture, ls string) (*hcloud.Image, error) {
 	images, err := p.client.AllWithOpts(ctx, hcloud.ImageListOpts{
 		Type:         []hcloud.ImageType{hcloud.ImageTypeSystem},
 		Architecture: []hcloud.Architecture{arch},
 		ListOpts:     hcloud.ListOpts{LabelSelector: ls},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("listing ubuntu images: %w", err)
+		return nil, fmt.Errorf("listing %s images: %w", family, err)
 	}
 
+	var best *hcloud.Image
 	for _, img := range images {
 		desc := strings.ToLower(img.Description)
-		if !strings.Contains(desc, "ubuntu") {
+		if !strings.Contains(desc, family) {
 			continue
 		}
 		if version != "" && !strings.Contains(desc, version) {
 			continue
 		}
-		return img, nil
+		if best == nil || img.Created.After(best.Created) {
+			best = img
+		}
+	}
+	if best != nil {
+		return best, nil
 	}
 
 	// Hetzner system images carry no labels, so a selector that matched none
 	// means a custom snapshot (e.g. a Packer-built node image): newest match.
 	if ls != "" {
-		return p.newestSnapshot(ctx, "ubuntu", "", version, arch, ls)
+		return p.newestSnapshot(ctx, family, version, arch, ls)
 	}
 	if version != "" {
-		return nil, newPermanentError("no ubuntu image found for version %q and arch %q", version, arch)
+		return nil, newPermanentError("no %s image found for version %q and arch %q", family, version, arch)
 	}
-	return nil, newPermanentError("no ubuntu image found for arch %q", arch)
-}
-
-// resolveTalos finds the newest snapshot image whose description contains "talos" and optionally the given version.
-func (p *Provider) resolveTalos(ctx context.Context, version string, arch hcloud.Architecture, ls string) (*hcloud.Image, error) {
-	return p.newestSnapshot(ctx, "talos", "talos", version, arch, ls)
+	return nil, newPermanentError("no %s image found for arch %q", family, arch)
 }
 
 // newestSnapshot returns the newest snapshot matching the label selector whose
-// description contains descMatch (if set) and version (if set).
-func (p *Provider) newestSnapshot(ctx context.Context, family, descMatch, version string, arch hcloud.Architecture, ls string) (*hcloud.Image, error) {
+// description contains version, if set.
+func (p *Provider) newestSnapshot(ctx context.Context, family, version string, arch hcloud.Architecture, ls string) (*hcloud.Image, error) {
 	images, err := p.client.AllWithOpts(ctx, hcloud.ImageListOpts{
 		Type:         []hcloud.ImageType{hcloud.ImageTypeSnapshot},
 		Architecture: []hcloud.Architecture{arch},
@@ -151,9 +153,6 @@ func (p *Provider) newestSnapshot(ctx context.Context, family, descMatch, versio
 	var best *hcloud.Image
 	for _, img := range images {
 		desc := strings.ToLower(img.Description)
-		if descMatch != "" && !strings.Contains(desc, descMatch) {
-			continue
-		}
 		if version != "" && !strings.Contains(desc, version) {
 			continue
 		}

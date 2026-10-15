@@ -1,9 +1,9 @@
 # Multi-arch NodePool pattern — amd64 + arm64 from a single NodeClass
 #
 # How it works:
-#   - One HCloudNodeClass covers both architectures.  imageSelector.selector
-#     must match images for BOTH amd64 and arm64; the provider resolves one
-#     image ID per architecture and guards against provisioning a node whose
+#   - One HCloudNodeClass covers both architectures.  Hetzner publishes
+#     Debian for amd64 and arm64; the provider resolves one image ID per
+#     architecture and guards against provisioning a node whose
 #     image arch does not match the selected server type.
 #   - TWO NodePools — one per arch — let Karpenter track capacity limits
 #     and disruption budgets independently for each architecture.
@@ -16,16 +16,17 @@
 #   arm64: cax (shared ARM — typically best price/vCPU)
 #
 # Image requirement:
-#   Your Talos (or Ubuntu) images must be uploaded for BOTH architectures.
-#   Use imageSelector.selector to pin a label that is present on both the
-#   x86 and ARM snapshots, e.g. {"caph-image-name": "talos-v1.9.5-gvisor"}
-#   where both images carry that label.  If only one arch has an image with
-#   the selector, the provider will report ImagesReady=False.
+#   With imageSelector.selector set, label your snapshots for BOTH
+#   architectures.  The NodeClass stays Ready while one architecture resolves,
+#   and the other pool then launches nothing.
+#
+# The userData Secret is the one docs/debian-bootstrap.md creates; its
+# cloud-init installs the packages for whichever architecture it runs on.
 
 apiVersion: karpenter.hetzner.cloud/v1
 kind: HCloudNodeClass
 metadata:
-  name: talos-multiarch
+  name: debian-multiarch
 spec:
   locations:
     - nbg1
@@ -33,10 +34,8 @@ spec:
     - hel1
 
   imageSelector:
-    family: talos
-    # ADJUST: this label must be present on BOTH your amd64 and arm64 images.
-    selector:
-      caph-image-name: "talos-v1.9.5-gvisor"
+    family: debian
+    version: "13"
 
   # ADJUST: replace with your Hetzner private network ID.
   networkID: 123456
@@ -54,8 +53,8 @@ spec:
 
   userDataSecretRef:
     namespace: kube-system
-    name: talos-worker-machineconfig
-    key: worker.yaml
+    name: debian-worker-userdata
+    key: cloud-init.yaml
 
 ---
 # NodePool: amd64 — x86-64 dedicated CPU (ccx) for latency-sensitive work.
@@ -66,14 +65,14 @@ spec:
 apiVersion: karpenter.sh/v1
 kind: NodePool
 metadata:
-  name: talos-amd64
+  name: debian-amd64
 spec:
   template:
     spec:
       nodeClassRef:
         group: karpenter.hetzner.cloud
         kind: HCloudNodeClass
-        name: talos-multiarch
+        name: debian-multiarch
 
       requirements:
         # Hetzner has no spot capacity. Pin on-demand, or Karpenter core sets spot on
@@ -115,14 +114,14 @@ spec:
 apiVersion: karpenter.sh/v1
 kind: NodePool
 metadata:
-  name: talos-arm64
+  name: debian-arm64
 spec:
   template:
     spec:
       nodeClassRef:
         group: karpenter.hetzner.cloud
         kind: HCloudNodeClass
-        name: talos-multiarch
+        name: debian-multiarch
 
       requirements:
         # Hetzner has no spot capacity. Pin on-demand, or Karpenter core sets spot on

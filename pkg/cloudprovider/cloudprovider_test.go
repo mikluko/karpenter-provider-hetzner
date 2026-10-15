@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 package cloudprovider_test
 
 import (
@@ -16,11 +19,11 @@ import (
 	karpv1 "sigs.k8s.io/karpenter/pkg/apis/v1"
 	karpcp "sigs.k8s.io/karpenter/pkg/cloudprovider"
 
-	apiv1 "github.com/paperclipinc/karpenter-provider-hetzner/pkg/apis/v1"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/cloudprovider"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/providers/imagefamily"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/providers/instance"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/providers/instancetype"
+	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/cloudprovider"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/instance"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/instancetype"
 )
 
 func newTestCloudProvider() *cloudprovider.CloudProvider {
@@ -144,7 +147,7 @@ func buildCP(t *testing.T, nc *apiv1.HCloudNodeClass, server *hcloud.Server) (*c
 
 	fsc := &fakeServerClient{servers: map[int64]*hcloud.Server{server.ID: server}}
 	stc := &fakeServerTypeClient{}
-	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Ubuntu 24.04", Architecture: hcloud.ArchitectureX86}}}
+	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86}}}
 
 	cp := cloudprovider.NewCloudProvider(kube,
 		instance.NewProvider(fsc, "test-cluster"),
@@ -182,7 +185,7 @@ func baselineNodeClass() *apiv1.HCloudNodeClass {
 		Spec: apiv1.HCloudNodeClassSpec{
 			Locations:     []string{"nbg1"},
 			NetworkID:     1,
-			ImageSelector: apiv1.ImageSelector{Family: "ubuntu"},
+			ImageSelector: apiv1.ImageSelector{Family: "debian"},
 		},
 	}
 }
@@ -214,7 +217,7 @@ func buildCPWithTypes(t *testing.T, nc *apiv1.HCloudNodeClass, types []*hcloud.S
 	*cloudprovider.CloudProvider, *fakeServerClient, *instancetype.Provider) {
 	t.Helper()
 	return buildCPWithImages(t, nc, types,
-		[]*hcloud.Image{{ID: 42, Description: "Ubuntu 24.04", Architecture: hcloud.ArchitectureX86}})
+		[]*hcloud.Image{{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86}})
 }
 
 // buildCPWithImages is buildCPWithTypes with an explicit image catalogue, for tests that
@@ -486,11 +489,11 @@ func TestCreate_UserDataFromSecret(t *testing.T) {
 	nc.Spec.UserData = "inline-should-be-ignored"
 	nc.Spec.UserDataSecretRef = &apiv1.UserDataSecretReference{
 		Namespace: "kube-system",
-		Name:      "talos",
+		Name:      "worker-userdata",
 		Key:       "userData",
 	}
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "talos", Namespace: "kube-system"},
+		ObjectMeta: metav1.ObjectMeta{Name: "worker-userdata", Namespace: "kube-system"},
 		Data:       map[string][]byte{"userData": []byte("machine:\n  type: worker\n")},
 	}
 
@@ -498,7 +501,7 @@ func TestCreate_UserDataFromSecret(t *testing.T) {
 	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nc, secret).Build()
 	fsc := &fakeServerClient{servers: map[int64]*hcloud.Server{}}
 	stc := &fakeServerTypeClient{types: []*hcloud.ServerType{cx22Type()}}
-	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Ubuntu 24.04", Architecture: hcloud.ArchitectureX86}}}
+	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86}}}
 	cp := cloudprovider.NewCloudProvider(kube,
 		instance.NewProvider(fsc, "test-cluster"),
 		instancetype.NewProvider(stc),
@@ -523,7 +526,7 @@ func TestCreate_UserDataInlineWhenNoRef(t *testing.T) {
 	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nc).Build()
 	fsc := &fakeServerClient{servers: map[int64]*hcloud.Server{}}
 	stc := &fakeServerTypeClient{types: []*hcloud.ServerType{cx22Type()}}
-	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Ubuntu 24.04", Architecture: hcloud.ArchitectureX86}}}
+	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86}}}
 	cp := cloudprovider.NewCloudProvider(kube,
 		instance.NewProvider(fsc, "test-cluster"),
 		instancetype.NewProvider(stc),
@@ -544,12 +547,12 @@ func TestCreate_UserDataSecretKeyMissing(t *testing.T) {
 	nc := baselineNodeClass()
 	nc.Spec.UserDataSecretRef = &apiv1.UserDataSecretReference{
 		Namespace: "kube-system",
-		Name:      "talos",
+		Name:      "worker-userdata",
 		Key:       "userData",
 	}
 	// Secret exists but contains a different key — "userData" is absent.
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "talos", Namespace: "kube-system"},
+		ObjectMeta: metav1.ObjectMeta{Name: "worker-userdata", Namespace: "kube-system"},
 		Data:       map[string][]byte{"other": []byte("x")},
 	}
 
@@ -557,7 +560,7 @@ func TestCreate_UserDataSecretKeyMissing(t *testing.T) {
 	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nc, secret).Build()
 	fsc := &fakeServerClient{servers: map[int64]*hcloud.Server{}}
 	stc := &fakeServerTypeClient{types: []*hcloud.ServerType{cx22Type()}}
-	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Ubuntu 24.04", Architecture: hcloud.ArchitectureX86}}}
+	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86}}}
 	cp := cloudprovider.NewCloudProvider(kube,
 		instance.NewProvider(fsc, "test-cluster"),
 		instancetype.NewProvider(stc),
@@ -584,7 +587,7 @@ func TestCreate_UserDataSecretMissing(t *testing.T) {
 	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nc).Build()
 	fsc := &fakeServerClient{servers: map[int64]*hcloud.Server{}}
 	stc := &fakeServerTypeClient{types: []*hcloud.ServerType{cx22Type()}}
-	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Ubuntu 24.04", Architecture: hcloud.ArchitectureX86}}}
+	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86}}}
 	cp := cloudprovider.NewCloudProvider(kube,
 		instance.NewProvider(fsc, "test-cluster"),
 		instancetype.NewProvider(stc),
@@ -933,7 +936,7 @@ func TestCreate_HonoursZoneRequirementOverPrice(t *testing.T) {
 // TestCreate_SkipsArchWithoutResolvedImage verifies that Create walks past a cheaper
 // instance type whose architecture the NodeClass has no image for, instead of
 // dead-ending on it. The nodeclass controller deliberately marks a NodeClass Ready when
-// only ONE architecture resolves ("an all-amd64 cluster has no arm64 Talos snapshot"),
+// only ONE architecture resolves ("an all-amd64 cluster has no arm64 snapshot"),
 // so an x86-only catalog is a supported configuration -- and cheapest-first selection
 // steers into it whenever a pool permits both architectures and the ARM candidate
 // prices lower for the requested shape. Create breaks
@@ -1191,7 +1194,7 @@ func TestCreate_LiveImageWrongArchIsRejected(t *testing.T) {
 		instance.NewProvider(fsc, "test-cluster"),
 		instancetype.NewProvider(&fakeServerTypeClient{types: []*hcloud.ServerType{armType("cax31", "0.0100")}}),
 		imagefamily.NewProvider(unfilteredImages{
-			img: &hcloud.Image{ID: 42, Description: "Ubuntu 24.04", Architecture: hcloud.ArchitectureX86},
+			img: &hcloud.Image{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86},
 		}))
 
 	_, err := cp.Create(context.Background(), createNodeClaim())
@@ -1236,8 +1239,7 @@ func selectionSkippedCount(t *testing.T, arch, reason string) float64 {
 // tracks launches, not catalogue size. Incrementing inside the selection loop made a
 // single launch add one per ARM type hcloud publishes, so the rate scaled with the
 // catalogue and could not be compared across clusters or read as "how often are we
-// routing around a missing image" -- which is what docs/talos-bootstrap.md tells
-// operators to alert on.
+// routing around a missing image".
 func TestCreate_CountsSkippedArchOncePerLaunch(t *testing.T) {
 	nc := baselineNodeClass()
 	withResolvedImages(nc, apiv1.ResolvedImage{Architecture: string(hcloud.ArchitectureX86), ImageID: 42})

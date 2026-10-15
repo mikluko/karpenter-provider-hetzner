@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 // Package metrics defines and registers Prometheus metrics for the Hetzner
 // Karpenter provider under the "karpenter_hetzner_" namespace.
 //

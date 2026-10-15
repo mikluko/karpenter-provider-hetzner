@@ -2,48 +2,16 @@ apiVersion: v2
 name: karpenter-provider-hetzner
 description: Karpenter cloud provider for Hetzner Cloud
 type: application
-version: 3.0.1
-appVersion: "3.0.1"
-# home points at Paperclip.inc (the project's canonical page) so listing
-# "Homepage" links drive backlinks to the domain; GitHub stays as source.
-home: https://paperclip.inc/karpenter-hetzner
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/mikluko/karpenter-provider-hetzner
 sources:
-  - https://github.com/stubbi/karpenter-provider-hetzner
+  - https://github.com/mikluko/karpenter-provider-hetzner
 keywords:
   - karpenter
   - hetzner
   - autoscaling
   - node-provisioning
 maintainers:
-  - name: Paperclip.inc
-    url: https://paperclip.inc
-annotations:
-  artifacthub.io/license: Apache-2.0
-  artifacthub.io/links: |
-    - name: Homepage
-      url: https://paperclip.inc/karpenter-hetzner
-    - name: source
-      url: https://github.com/stubbi/karpenter-provider-hetzner
-    - name: Talos bootstrap guide
-      url: https://github.com/stubbi/karpenter-provider-hetzner/blob/main/docs/talos-bootstrap.md
-    - name: k3s bootstrap guide
-      url: https://github.com/stubbi/karpenter-provider-hetzner/blob/main/docs/k3s-bootstrap.md
-  artifacthub.io/category: integration-delivery
-  artifacthub.io/containsSecurityUpdates: "false"
-  artifacthub.io/changes: |
-    - kind: changed
-      description: "BREAKING: the chart and the image are published under ghcr.io/stubbi. image.repository defaults to ghcr.io/stubbi/karpenter-provider-hetzner, and helm upgrade must name oci://ghcr.io/stubbi/charts/karpenter-provider-hetzner"
-    - kind: changed
-      description: "BREAKING: resource names and label selectors are scoped to the Helm release. Upgrading from 2.x requires deleting the existing Deployment (its .spec.selector is immutable) -- see the chart README's Upgrading section"
-    - kind: fixed
-      description: "Two releases in one namespace no longer collide: names are release-scoped and every selector carries app.kubernetes.io/instance, so each Deployment, Service, PDB and ServiceMonitor sees only its own release's pods"
-    - kind: fixed
-      description: "Cluster-scoped ClusterRole/ClusterRoleBinding names include the release namespace, so two releases in different namespaces no longer collide on them"
-    - kind: changed
-      description: "serviceAccount.name defaults to the release-scoped name instead of \"karpenter\", which is also what the upstream karpenter chart creates"
-    - kind: added
-      description: "nameOverride and fullnameOverride"
-    - kind: fixed
-      description: "The ClusterRole grants everything karpenter core requires, including pods delete, so drains past terminationGracePeriod and NodeRepair can finish"
-    - kind: added
-      description: "hcloud.apiTimeout bounds each hcloud API request (default 30s)"
+  - name: mikluko
+    url: https://github.com/mikluko

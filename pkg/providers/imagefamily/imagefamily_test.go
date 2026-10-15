@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 package imagefamily
 
 import (
@@ -8,7 +11,7 @@ import (
 
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 
-	apiv1 "github.com/paperclipinc/karpenter-provider-hetzner/pkg/apis/v1"
+	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
 )
 
 // mockImageClient is a fake ImageClient for testing.
@@ -64,46 +67,64 @@ func makeImage(id int64, imgType hcloud.ImageType, arch hcloud.Architecture, des
 
 var baseTime = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
-func TestResolveUbuntu_PicksFirst(t *testing.T) {
+func TestResolveDebian_PicksNewest(t *testing.T) {
 	images := []*hcloud.Image{
-		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Ubuntu 22.04", baseTime),
-		makeImage(2, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Ubuntu 20.04", baseTime),
+		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Debian 11", baseTime),
+		makeImage(2, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Debian 13", baseTime.Add(48*time.Hour)),
+		makeImage(3, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Debian 12", baseTime.Add(24*time.Hour)),
+		makeImage(4, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Ubuntu 24.04", baseTime.Add(72*time.Hour)),
 	}
 	p := NewProvider(&mockImageClient{images: images})
 
-	img, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "ubuntu"}, hcloud.ArchitectureX86)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if img.ID != 1 {
-		t.Errorf("expected first match (ID=1), got ID=%d", img.ID)
-	}
-}
-
-func TestResolveUbuntu_VersionPin(t *testing.T) {
-	images := []*hcloud.Image{
-		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Ubuntu 22.04", baseTime),
-		makeImage(2, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Ubuntu 20.04", baseTime),
-	}
-	p := NewProvider(&mockImageClient{images: images})
-
-	img, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "ubuntu", Version: "20.04"}, hcloud.ArchitectureX86)
+	img, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "debian"}, hcloud.ArchitectureX86)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if img.ID != 2 {
-		t.Errorf("expected ID=2 (Ubuntu 20.04), got ID=%d", img.ID)
+		t.Errorf("expected newest Debian (ID=2), got ID=%d", img.ID)
 	}
 }
 
-func TestResolveUbuntu_ArchFilter(t *testing.T) {
+func TestResolveDebian_TieKeepsFirstListed(t *testing.T) {
 	images := []*hcloud.Image{
-		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureARM, "Ubuntu 22.04 ARM", baseTime),
-		makeImage(2, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Ubuntu 22.04", baseTime),
+		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Debian 13", baseTime),
+		makeImage(2, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Debian 12", baseTime),
 	}
 	p := NewProvider(&mockImageClient{images: images})
 
-	img, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "ubuntu"}, hcloud.ArchitectureARM)
+	img, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "debian"}, hcloud.ArchitectureX86)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if img.ID != 1 {
+		t.Errorf("expected first listed of equally new images (ID=1), got ID=%d", img.ID)
+	}
+}
+
+func TestResolveDebian_VersionPin(t *testing.T) {
+	images := []*hcloud.Image{
+		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureARM, "Debian 12", baseTime),
+		makeImage(2, hcloud.ImageTypeSystem, hcloud.ArchitectureARM, "Debian 13", baseTime.Add(24*time.Hour)),
+	}
+	p := NewProvider(&mockImageClient{images: images})
+
+	img, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "debian", Version: "12"}, hcloud.ArchitectureARM)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if img.ID != 1 {
+		t.Errorf("expected Debian 12 (ID=1), got ID=%d", img.ID)
+	}
+}
+
+func TestResolveDebian_ArchFilter(t *testing.T) {
+	images := []*hcloud.Image{
+		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureARM, "Debian 13", baseTime),
+		makeImage(2, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Debian 13", baseTime),
+	}
+	p := NewProvider(&mockImageClient{images: images})
+
+	img, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "debian"}, hcloud.ArchitectureARM)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -112,103 +133,58 @@ func TestResolveUbuntu_ArchFilter(t *testing.T) {
 	}
 }
 
-func TestResolveUbuntu_NoMatch(t *testing.T) {
+func TestResolveDebian_NoMatchIsPermanent(t *testing.T) {
 	images := []*hcloud.Image{
-		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Ubuntu 22.04", baseTime),
-	}
-	p := NewProvider(&mockImageClient{images: images})
-
-	_, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "ubuntu", Version: "24.04"}, hcloud.ArchitectureX86)
-	if err == nil {
-		t.Fatal("expected error for no matching image, got nil")
-	}
-}
-
-func TestResolveTalos_PicksNewest(t *testing.T) {
-	images := []*hcloud.Image{
-		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "talos v1.6.0", baseTime),
-		makeImage(2, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "talos v1.7.0", baseTime.Add(24*time.Hour)),
-		makeImage(3, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "talos v1.5.0", baseTime.Add(-24*time.Hour)),
-	}
-	p := NewProvider(&mockImageClient{images: images})
-
-	img, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "talos"}, hcloud.ArchitectureX86)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if img.ID != 2 {
-		t.Errorf("expected newest talos (ID=2), got ID=%d", img.ID)
-	}
-}
-
-func TestResolveTalos_VersionPin(t *testing.T) {
-	images := []*hcloud.Image{
-		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "talos v1.6.0", baseTime),
-		makeImage(2, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "talos v1.7.0", baseTime.Add(24*time.Hour)),
-	}
-	p := NewProvider(&mockImageClient{images: images})
-
-	img, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "talos", Version: "v1.6.0"}, hcloud.ArchitectureX86)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if img.ID != 1 {
-		t.Errorf("expected talos v1.6.0 (ID=1), got ID=%d", img.ID)
-	}
-}
-
-func TestResolveTalos_IgnoresSystemImages(t *testing.T) {
-	// talos images must be snapshots; system images called "talos" should be ignored.
-	images := []*hcloud.Image{
-		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "talos system", baseTime),
-		makeImage(2, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "talos v1.7.0", baseTime),
-	}
-	p := NewProvider(&mockImageClient{images: images})
-
-	img, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "talos"}, hcloud.ArchitectureX86)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	// Only the snapshot should be found.
-	if img.ID != 2 {
-		t.Errorf("expected snapshot talos (ID=2), got ID=%d", img.ID)
-	}
-}
-
-func TestResolveUnsupportedFamily(t *testing.T) {
-	p := NewProvider(&mockImageClient{})
-
-	_, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "fedora"}, hcloud.ArchitectureX86)
-	if err == nil {
-		t.Fatal("expected error for unsupported family, got nil")
-	}
-}
-
-func TestResolveTalos_LabelSelectorForwarded(t *testing.T) {
-	fc := &mockImageClient{images: []*hcloud.Image{
-		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "talos v1.13.3", baseTime),
-	}}
-	p := NewProvider(fc)
-	sel := apiv1.ImageSelector{Family: "talos", Selector: map[string]string{"caph-image-name": "talos-v1.13.3-gvisor"}}
-	if _, err := p.Resolve(context.Background(), sel, hcloud.ArchitectureX86); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got := fc.lastOpts.LabelSelector; got != "caph-image-name=talos-v1.13.3-gvisor" {
-		t.Fatalf("label selector not forwarded: got %q", got)
-	}
-}
-
-func TestResolveUbuntu_LabelSelectorForwarded(t *testing.T) {
-	fc := &mockImageClient{images: []*hcloud.Image{
+		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Debian 12", baseTime),
 		makeImage(2, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Ubuntu 24.04", baseTime),
+	}
+	p := NewProvider(&mockImageClient{images: images})
+
+	_, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "debian", Version: "13"}, hcloud.ArchitectureX86)
+	if !IsPermanent(err) {
+		t.Fatalf("expected a permanent error, got %v", err)
+	}
+}
+
+func TestResolveDebian_LabelSelectorForwarded(t *testing.T) {
+	fc := &mockImageClient{images: []*hcloud.Image{
+		makeImage(2, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Debian 13", baseTime),
 	}}
 	p := NewProvider(fc)
-	sel := apiv1.ImageSelector{Family: "ubuntu", Selector: map[string]string{"role": "worker"}}
+	sel := apiv1.ImageSelector{Family: "debian", Selector: map[string]string{"role": "worker"}}
 	if _, err := p.Resolve(context.Background(), sel, hcloud.ArchitectureX86); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if got := fc.lastOpts.LabelSelector; got != "role=worker" {
 		t.Fatalf("label selector not forwarded: got %q", got)
+	}
+}
+
+func TestResolveDebian_LabelSelectorFallsBackToNewestSnapshot(t *testing.T) {
+	fc := &mockImageClient{images: []*hcloud.Image{
+		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "k8s-node-v1.36.4-old", baseTime),
+		makeImage(2, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "k8s-node-v1.36.4-new", baseTime.Add(time.Hour)),
+	}}
+	p := NewProvider(fc)
+	sel := apiv1.ImageSelector{Family: "debian", Selector: map[string]string{"role": "k8s-node"}}
+	img, err := p.Resolve(context.Background(), sel, hcloud.ArchitectureX86)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if img.ID != 2 {
+		t.Errorf("expected newest snapshot (ID=2), got ID=%d", img.ID)
+	}
+	if got := fc.lastOpts.LabelSelector; got != "role=k8s-node" {
+		t.Fatalf("label selector not forwarded to snapshot lookup: got %q", got)
+	}
+}
+
+func TestResolveDebian_NoSelectorIgnoresSnapshots(t *testing.T) {
+	p := NewProvider(&mockImageClient{images: []*hcloud.Image{
+		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "debian snapshot", baseTime),
+	}})
+	if _, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "debian"}, hcloud.ArchitectureX86); err == nil {
+		t.Fatal("expected no match: snapshots need a label selector")
 	}
 }
 
@@ -225,7 +201,7 @@ func (e erroringImages) AllWithOpts(_ context.Context, _ hcloud.ImageListOpts) (
 // instance-type selection then refuses that architecture, so Karpenter deletes
 // NodeClaims over an API blip.
 func TestResolve_DistinguishesNotFoundFromAPIFailure(t *testing.T) {
-	sel := apiv1.ImageSelector{Family: "ubuntu"}
+	sel := apiv1.ImageSelector{Family: "debian"}
 
 	// Catalogue readable, genuinely empty -> definitive.
 	p := NewProvider(&mockImageClient{})
@@ -254,40 +230,15 @@ func TestResolve_DistinguishesNotFoundFromAPIFailure(t *testing.T) {
 // previous image IDs and keep the condition green, so misclassifying a definitively bad
 // spec here means launching stale images indefinitely with nothing reported.
 func TestResolve_UnsupportedFamilyIsPermanent(t *testing.T) {
-	p := NewProvider(&mockImageClient{})
-	_, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "windows"}, hcloud.ArchitectureX86)
-	if err == nil {
-		t.Fatal("expected an error for an unsupported family")
+	images := []*hcloud.Image{
+		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Ubuntu 24.04", baseTime),
+		makeImage(2, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "talos v1.13.3", baseTime),
 	}
-	if !IsPermanent(err) {
-		t.Errorf("unsupported family must be permanent, got %T: %v", err, err)
-	}
-}
-
-func TestResolveUbuntu_LabelSelectorFallsBackToNewestSnapshot(t *testing.T) {
-	fc := &mockImageClient{images: []*hcloud.Image{
-		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "k8s-node-v1.36.4-old", baseTime),
-		makeImage(2, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "k8s-node-v1.36.4-new", baseTime.Add(time.Hour)),
-	}}
-	p := NewProvider(fc)
-	sel := apiv1.ImageSelector{Family: "ubuntu", Selector: map[string]string{"role": "k8s-node"}}
-	img, err := p.Resolve(context.Background(), sel, hcloud.ArchitectureX86)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if img.ID != 2 {
-		t.Errorf("expected newest snapshot (ID=2), got ID=%d", img.ID)
-	}
-	if got := fc.lastOpts.LabelSelector; got != "role=k8s-node" {
-		t.Fatalf("label selector not forwarded to snapshot lookup: got %q", got)
-	}
-}
-
-func TestResolveUbuntu_NoSelectorIgnoresSnapshots(t *testing.T) {
-	p := NewProvider(&mockImageClient{images: []*hcloud.Image{
-		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "ubuntu snapshot", baseTime),
-	}})
-	if _, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: "ubuntu"}, hcloud.ArchitectureX86); err == nil {
-		t.Fatal("expected no match: snapshots need a label selector")
+	for _, family := range []string{"ubuntu", "talos", "windows"} {
+		p := NewProvider(&mockImageClient{images: images})
+		_, err := p.Resolve(context.Background(), apiv1.ImageSelector{Family: family}, hcloud.ArchitectureX86)
+		if !IsPermanent(err) {
+			t.Errorf("family %q: want a permanent error, got %v", family, err)
+		}
 	}
 }

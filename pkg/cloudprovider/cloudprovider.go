@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 package cloudprovider
 
 import (
@@ -19,11 +22,11 @@ import (
 	karpcp "sigs.k8s.io/karpenter/pkg/cloudprovider"
 	"sigs.k8s.io/karpenter/pkg/scheduling"
 
-	apiv1 "github.com/paperclipinc/karpenter-provider-hetzner/pkg/apis/v1"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/metrics"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/providers/imagefamily"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/providers/instance"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/providers/instancetype"
+	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/metrics"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/instance"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/instancetype"
 )
 
 const providerName = "hetzner"

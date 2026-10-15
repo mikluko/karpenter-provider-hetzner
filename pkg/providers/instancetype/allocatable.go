@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 package instancetype
 
 import (
@@ -8,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/karpenter/pkg/cloudprovider"
 
-	apiv1 "github.com/paperclipinc/karpenter-provider-hetzner/pkg/apis/v1"
+	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
 )
 
 // Kubelet's own defaults for the signals that move allocatable, applied to any

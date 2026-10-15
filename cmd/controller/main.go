@@ -1,3 +1,6 @@
+// Copyright The karpenter-provider-hetzner Authors.
+// SPDX-License-Identifier: Apache-2.0
+
 package main
 
 import (
@@ -12,14 +15,14 @@ import (
 	"sigs.k8s.io/karpenter/pkg/operator"
 
 	// Register our HCloudNodeClass v1 types.
-	_ "github.com/paperclipinc/karpenter-provider-hetzner/pkg/apis/v1"
+	_ "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
 
-	hetznercp "github.com/paperclipinc/karpenter-provider-hetzner/pkg/cloudprovider"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/controllers/nodeclass"
-	hetznerop "github.com/paperclipinc/karpenter-provider-hetzner/pkg/operator"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/providers/imagefamily"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/providers/instance"
-	"github.com/paperclipinc/karpenter-provider-hetzner/pkg/providers/instancetype"
+	hetznercp "github.com/mikluko/karpenter-provider-hetzner/pkg/cloudprovider"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/controllers/nodeclass"
+	hetznerop "github.com/mikluko/karpenter-provider-hetzner/pkg/operator"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/instance"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/instancetype"
 )
 
 func main() {

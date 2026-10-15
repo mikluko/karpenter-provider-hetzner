@@ -1,4 +1,4 @@
-# Ubuntu NodeClass + NodePool — kubeadm join via inline cloud-init
+# Debian NodeClass + NodePool — kubeadm join via inline cloud-init
 #
 # Prerequisites:
 #   - A running Kubernetes control plane reachable from new nodes.
@@ -7,29 +7,29 @@
 #   - The Hetzner private network ID and (optionally) firewall IDs.
 #
 # Apply with:
-#   kubectl apply -f examples/ubuntu-nodeclass.yaml
+#   kubectl apply -f examples/debian-nodeclass.yaml
 #
-# Trade-offs vs Talos:
-#   - Simpler: no custom image needed; Karpenter resolves the latest Ubuntu
-#     image from Hetzner's public catalogue automatically.
+# Notes:
+#   - No custom image needed: the provider resolves Hetzner's Debian 13 image
+#     for each architecture.
 #   - The join token and CA hash appear inline in userData.  Rotate tokens
 #     frequently and consider userDataSecretRef to keep them out of git.
-#     See docs/ubuntu-bootstrap.md for details.
+#     See docs/debian-bootstrap.md for details.
 
 apiVersion: karpenter.hetzner.cloud/v1
 kind: HCloudNodeClass
 metadata:
-  name: ubuntu-default
+  name: debian-default
 spec:
   locations:
     - nbg1
     - fsn1
 
   imageSelector:
-    family: ubuntu
-    # version pins the Ubuntu release; omit to always get the newest.
-    # ADJUST: "22.04" or "24.04"
-    version: "24.04"
+    family: debian
+    # version pins the Debian release; omit to always get the newest.
+    # Debian 13 is trixie.
+    version: "13"
 
   # networkID: numeric Hetzner private network ID.
   # ADJUST: replace with your network ID.
@@ -56,15 +56,15 @@ spec:
   #
   # SECURITY NOTE: the join token carries cluster access.  Consider storing
   # this blob in a Secret and referencing it via userDataSecretRef instead of
-  # committing it to git.  See docs/ubuntu-bootstrap.md.
+  # committing it to git.  See docs/debian-bootstrap.md.
   userData: |
     #cloud-config
     package_update: true
     packages:
-      - apt-transport-https
       - ca-certificates
       - curl
       - gnupg
+      - containerd
 
     runcmd:
       # ---- kernel settings ----
@@ -78,17 +78,11 @@ spec:
         EOF
       - sysctl --system
 
-      # ---- containerd ----
-      - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-      - |
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-        https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
-        > /etc/apt/sources.list.d/docker.list
-      - apt-get update -y
-      - apt-get install -y containerd.io
+      # ---- containerd, from the Debian archive ----
+      - mkdir -p /etc/containerd /etc/apt/keyrings
       - containerd config default > /etc/containerd/config.toml
       - sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-      - systemctl enable --now containerd
+      - systemctl restart containerd
 
       # ---- kubeadm / kubelet / kubectl ----
       - curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
@@ -97,6 +91,7 @@ spec:
       - apt-get install -y kubelet kubeadm kubectl
       - apt-mark hold kubelet kubeadm kubectl
       - systemctl enable kubelet
+      - echo 'KUBELET_EXTRA_ARGS=--register-with-taints=karpenter.sh/unregistered=:NoExecute' > /etc/default/kubelet
 
       # ---- join the cluster ----
       # ADJUST: replace every <PLACEHOLDER> with real values.
@@ -107,19 +102,19 @@ spec:
           --discovery-token-ca-cert-hash sha256:<CA_CERT_HASH>
 
 ---
-# NodePool for Ubuntu nodes — x86-64, shared-CPU (cpx family for cost).
+# NodePool for Debian nodes — x86-64, shared-CPU (cpx family for cost).
 
 apiVersion: karpenter.sh/v1
 kind: NodePool
 metadata:
-  name: ubuntu-amd64
+  name: debian-amd64
 spec:
   template:
     spec:
       nodeClassRef:
         group: karpenter.hetzner.cloud
         kind: HCloudNodeClass
-        name: ubuntu-default
+        name: debian-default
 
       requirements:
         # Hetzner has no spot capacity. Pin on-demand, or Karpenter core sets spot on

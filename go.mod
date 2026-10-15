@@ -1,4 +1,4 @@
-module github.com/paperclipinc/karpenter-provider-hetzner
+module github.com/mikluko/karpenter-provider-hetzner
 
 go 1.26.7
 
