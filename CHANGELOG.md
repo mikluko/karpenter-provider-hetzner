@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-16
+
+### Changed
+
+- `HCloudNodeClass.spec.networkID` is optional. Without it, servers attach to no private network, `NetworkReady` is True, and locations are not checked against network zones; `enablePublicIPv4` or `enablePublicIPv6` must then stay `true`. The `HCloudNodeClass` CRD changes, so apply it before `helm upgrade`, as the README describes.
+
 ## [0.3.0] - 2026-10-16
 
 ### Added
@@ -54,7 +60,8 @@ history is in the [upstream changelog](https://github.com/mikluko/karpenter-prov
 - **Breaking:** the `talos` and `ubuntu` image families; `debian` is the only one.
 - The chart's Artifact Hub annotations.
 
-[Unreleased]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mikluko/karpenter-provider-hetzner/releases/tag/v0.1.0

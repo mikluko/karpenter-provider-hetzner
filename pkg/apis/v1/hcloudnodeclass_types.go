@@ -28,14 +28,18 @@ type HCloudNodeClass struct {
 	Status            HCloudNodeClassStatus `json:"status,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:message="a node class without networkID needs enablePublicIPv4 or enablePublicIPv6",rule="has(self.networkID) || !has(self.enablePublicIPv4) || self.enablePublicIPv4 || !has(self.enablePublicIPv6) || self.enablePublicIPv6"
 type HCloudNodeClassSpec struct {
 	// +kubebuilder:validation:MinItems=1
 	Locations []string `json:"locations"`
 
 	ImageSelector ImageSelector `json:"imageSelector"`
 
+	// NetworkID is the private network every server attaches to. Without it,
+	// servers have only their public addresses.
 	// +kubebuilder:validation:Minimum=1
-	NetworkID int64 `json:"networkID"`
+	// +optional
+	NetworkID int64 `json:"networkID,omitempty"`
 
 	// +optional
 	FirewallIDs []int64 `json:"firewallIDs,omitempty"`

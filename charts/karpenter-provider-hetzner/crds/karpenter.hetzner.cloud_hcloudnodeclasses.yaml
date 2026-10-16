@@ -161,6 +161,9 @@ spec:
                 minItems: 1
                 type: array
               networkID:
+                description: |-
+                  NetworkID is the private network every server attaches to. Without it,
+                  servers have only their public addresses.
                 format: int64
                 minimum: 1
                 type: integer
@@ -201,8 +204,11 @@ spec:
             required:
             - imageSelector
             - locations
-            - networkID
             type: object
+            x-kubernetes-validations:
+            - message: a node class without networkID needs enablePublicIPv4 or enablePublicIPv6
+              rule: has(self.networkID) || !has(self.enablePublicIPv4) || self.enablePublicIPv4
+                || !has(self.enablePublicIPv6) || self.enablePublicIPv6
           status:
             properties:
               conditions:

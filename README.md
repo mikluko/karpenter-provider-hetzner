@@ -42,9 +42,11 @@ boots with the `userData` from the node class, which joins it to the cluster.
 You need:
 
 - a Kubernetes cluster on Hetzner Cloud whose nodes have provider IDs of the form
-  `hcloud://<server-id>`, as the
+  `hcloud://<server-id>`, set by the
   [hcloud Cloud Controller Manager](https://github.com/hetznercloud/hcloud-cloud-controller-manager)
-  sets them;
+  or by the node's bootstrap, as
+  [About node bootstrap](docs/about-node-bootstrap.md#what-karpenter-expects-of-a-new-node)
+  describes;
 - a Hetzner Cloud API token with read and write access.
 
 To install:

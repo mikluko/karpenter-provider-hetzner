@@ -18,7 +18,19 @@ implies on the NodeClaim: `karpenter.sh/nodepool`,
 registers, so a bootstrap gains nothing by setting them, and loses something by
 setting them wrong.
 
-The one thing the bootstrap has to supply is a taint. Karpenter expects a new
+The bootstrap has to supply two things the NodeClaim cannot.
+
+The first is the provider ID. Karpenter finds the NodeClaim of a registering Node
+by `spec.providerID`, which has to read `hcloud://<server-id>`. The hcloud Cloud
+Controller Manager sets it on a cluster that runs one. On a cluster without it,
+the kubelet sets it at registration, with the server ID from the metadata
+service:
+
+```bash
+--provider-id=hcloud://$(curl -s http://169.254.169.254/hetzner/v1/metadata/instance-id)
+```
+
+The second is a taint. Karpenter expects a new
 node to register with `karpenter.sh/unregistered=:NoExecute`, and removes it once
 the NodeClaim's labels, taints, and owner references are on the Node. Until then
 the taint keeps pods off a node Karpenter has not finished with. On any

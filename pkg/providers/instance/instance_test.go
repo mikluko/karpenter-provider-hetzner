@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -362,6 +363,34 @@ func TestCreate_WaitsForActionsAndSetsPublicNet(t *testing.T) {
 	}
 	if !client.lastOpts.PublicNet.EnableIPv6 {
 		t.Error("expected public IPv6 to default to enabled")
+	}
+}
+
+func TestCreate_AttachesNetworkOnlyWhenSet(t *testing.T) {
+	for name, tc := range map[string]struct {
+		networkID int64
+		want      []int64
+	}{
+		"no network": {0, nil},
+		"network":    {7, []int64{7}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client := newMockServerClient()
+			p := NewProvider(client, "test-cluster")
+			if _, err := p.Create(context.Background(), CreateOpts{
+				Name: "n", ServerType: "cx22", Location: "nbg1", Image: &hcloud.Image{ID: 1},
+				NetworkID: tc.networkID, EnablePublicIPv4: true,
+			}); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			var got []int64
+			for _, n := range client.lastOpts.Networks {
+				got = append(got, n.ID)
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Errorf("networks = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
 

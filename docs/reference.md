@@ -9,7 +9,7 @@ HCloudNodeClass spec fields:
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `locations` | `[]string` | yes | None | Hetzner locations to create servers in. At least one. |
-| `networkID` | `int64` | yes | None | ID of the private network every server attaches to. |
+| `networkID` | `int64` | no | None | ID of the private network every server attaches to. Without it, servers have only their public addresses, so `enablePublicIPv4` or `enablePublicIPv6` must stay `true`. |
 | `imageSelector.family` | `debian` | yes | None | OS image family. The only value. |
 | `imageSelector.version` | `string` | no | Newest Debian image | Substring matched against the image description, for example `13` for Debian 13. |
 | `imageSelector.selector` | `map[string]string` | no | None | hcloud labels an image must carry, all of them, for example `{"role": "k0s-worker"}`. Hetzner's Debian images carry no labels, so a selector picks the newest matching snapshot of your own. |

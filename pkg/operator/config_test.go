@@ -13,13 +13,13 @@ func TestLoadConfig_RequiresClusterName(t *testing.T) {
 }
 
 func TestLoadConfig_ReadsClusterName(t *testing.T) {
-	t.Setenv("CLUSTER_NAME", "tugarin")
+	t.Setenv("CLUSTER_NAME", "test-cluster")
 	cfg, err := LoadConfig()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.ClusterName != "tugarin" {
-		t.Errorf("got cluster name %q, want tugarin", cfg.ClusterName)
+	if cfg.ClusterName != "test-cluster" {
+		t.Errorf("got cluster name %q, want test-cluster", cfg.ClusterName)
 	}
 }
 
