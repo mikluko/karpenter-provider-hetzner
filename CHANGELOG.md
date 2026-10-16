@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-16
+
 ### Added
 
 - The chart is signed with cosign, as the image already was.
@@ -14,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Release images and charts are signed with the certificate identity `https://github.com/mikluko/karpenter-provider-hetzner/.github/workflows/release-roll.yaml@refs/tags/v<version>`.
+- Dependencies updated: golang 1.27.2.
+
+### Security
+
+- GHSA-gcjh-h69q-9w9g: JSON private fields could be exposed via NativeTypes and ParseStructTag, fixed by github.com/google/cel-go 0.30.0.
 
 ## [0.1.0] - 2026-10-15
 
@@ -37,5 +44,6 @@ history is in the [upstream changelog](https://github.com/mikluko/karpenter-prov
 - **Breaking:** the `talos` and `ubuntu` image families; `debian` is the only one.
 - The chart's Artifact Hub annotations.
 
-[Unreleased]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mikluko/karpenter-provider-hetzner/releases/tag/v0.1.0
