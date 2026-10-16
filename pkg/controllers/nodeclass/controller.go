@@ -79,16 +79,22 @@ func (c *Controller) Reconcile(ctx context.Context, nc *apiv1.HCloudNodeClass) (
 	stored := nc.DeepCopy()
 
 	// Network validation.
-	net, _, err := c.networks.GetByID(ctx, nc.Spec.NetworkID)
-	switch {
-	case err != nil:
-		nc.StatusConditions().SetUnknownWithReason(apiv1.ConditionTypeNetworkReady, "NetworkCheckFailed", err.Error())
-		c.warnf(nc, "NetworkCheckFailed", "ValidateNetwork", "network check failed: %v", err)
-	case net == nil:
-		nc.StatusConditions().SetFalse(apiv1.ConditionTypeNetworkReady, "NetworkNotFound", "configured networkID does not exist")
-		c.warnf(nc, "NetworkNotFound", "ValidateNetwork", "networkID %d does not exist", nc.Spec.NetworkID)
-	default:
+	var net *hcloud.Network
+	if nc.Spec.NetworkID == 0 {
 		nc.StatusConditions().SetTrue(apiv1.ConditionTypeNetworkReady)
+	} else {
+		var err error
+		net, _, err = c.networks.GetByID(ctx, nc.Spec.NetworkID)
+		switch {
+		case err != nil:
+			nc.StatusConditions().SetUnknownWithReason(apiv1.ConditionTypeNetworkReady, "NetworkCheckFailed", err.Error())
+			c.warnf(nc, "NetworkCheckFailed", "ValidateNetwork", "network check failed: %v", err)
+		case net == nil:
+			nc.StatusConditions().SetFalse(apiv1.ConditionTypeNetworkReady, "NetworkNotFound", "configured networkID does not exist")
+			c.warnf(nc, "NetworkNotFound", "ValidateNetwork", "networkID %d does not exist", nc.Spec.NetworkID)
+		default:
+			nc.StatusConditions().SetTrue(apiv1.ConditionTypeNetworkReady)
+		}
 	}
 
 	// Validate declared locations and their network-zone coverage.
@@ -220,9 +226,9 @@ func (c *Controller) Reconcile(ctx context.Context, nc *apiv1.HCloudNodeClass) (
 	return reconcile.Result{RequeueAfter: resyncInterval}, nil
 }
 
-// validateLocations checks that every declared location exists and has a subnet
-// in its network zone. Returns ok=true when all checks pass; unknown=true when
-// network-zone coverage cannot be validated.
+// validateLocations checks that every declared location exists and, for a node
+// class with a network, has a subnet in its network zone. Returns ok=true when
+// all checks pass; unknown=true when network-zone coverage cannot be validated.
 func (c *Controller) validateLocations(ctx context.Context, nc *apiv1.HCloudNodeClass, network *hcloud.Network) (reason, msg string, unknown, ok bool) {
 	locations, err := c.locations.All(ctx)
 	if err != nil {
@@ -244,6 +250,9 @@ func (c *Controller) validateLocations(ctx context.Context, nc *apiv1.HCloudNode
 		return "LocationNotFound", fmt.Sprintf("locations do not exist: %s", strings.Join(missing, ", ")), false, false
 	}
 
+	if nc.Spec.NetworkID == 0 {
+		return "", "", false, true
+	}
 	if network == nil {
 		return "NetworkUnavailable", "cannot validate location network zones", true, false
 	}

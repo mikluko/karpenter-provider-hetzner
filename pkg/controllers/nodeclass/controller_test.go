@@ -244,6 +244,64 @@ func TestReconcile_NetworkNotFound(t *testing.T) {
 	}
 }
 
+// unusedNetworks fails the test if the controller looks a network up.
+type unusedNetworks struct{ t *testing.T }
+
+func (u unusedNetworks) GetByID(_ context.Context, id int64) (*hcloud.Network, *hcloud.Response, error) {
+	u.t.Errorf("network %d looked up for a node class without networkID", id)
+	return nil, nil, nil
+}
+
+func TestReconcile_NoNetworkIsReady(t *testing.T) {
+	_ = apiv1.SchemeBuilder.AddToScheme(scheme.Scheme)
+	nc := newNodeClass()
+	nc.Spec.NetworkID = 0
+	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).
+		WithObjects(nc).WithStatusSubresource(nc).Build()
+
+	img := imagefamily.NewProvider(fakeImages{img: &hcloud.Image{ID: 42, Description: "Debian 13"}})
+	c := NewController(kube, unusedNetworks{t}, validLocations(), fakeFirewalls{}, fakeSSHKeys{}, img)
+
+	if _, err := c.Reconcile(context.Background(), nc.DeepCopy()); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := &apiv1.HCloudNodeClass{}
+	if err := kube.Get(context.Background(), client.ObjectKeyFromObject(nc), got); err != nil {
+		t.Fatal(err)
+	}
+	for _, cond := range []string{apiv1.ConditionTypeNetworkReady, apiv1.ConditionTypeLocationsReady} {
+		if !got.StatusConditions().Get(cond).IsTrue() {
+			t.Errorf("%s should be true without a network: %+v", cond, got.StatusConditions().Get(cond))
+		}
+	}
+	if !got.StatusConditions().Root().IsTrue() {
+		t.Error("Ready should be true without a network")
+	}
+}
+
+func TestReconcile_NoNetworkStillRejectsUnknownLocation(t *testing.T) {
+	_ = apiv1.SchemeBuilder.AddToScheme(scheme.Scheme)
+	nc := newNodeClass()
+	nc.Spec.NetworkID = 0
+	nc.Spec.Locations = []string{"nbg1", "nowhere1"}
+	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).
+		WithObjects(nc).WithStatusSubresource(nc).Build()
+
+	img := imagefamily.NewProvider(fakeImages{img: &hcloud.Image{ID: 42, Description: "Debian 13"}})
+	c := NewController(kube, unusedNetworks{t}, validLocations(), fakeFirewalls{}, fakeSSHKeys{}, img)
+
+	if _, err := c.Reconcile(context.Background(), nc.DeepCopy()); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	got := &apiv1.HCloudNodeClass{}
+	if err := kube.Get(context.Background(), client.ObjectKeyFromObject(nc), got); err != nil {
+		t.Fatal(err)
+	}
+	if cond := got.StatusConditions().Get(apiv1.ConditionTypeLocationsReady); !cond.IsFalse() || cond.Reason != "LocationNotFound" {
+		t.Errorf("LocationsReady = %+v, want False with reason LocationNotFound", cond)
+	}
+}
+
 func TestReconcile_LocationNotFound(t *testing.T) {
 	_ = apiv1.SchemeBuilder.AddToScheme(scheme.Scheme)
 	nc := newNodeClass()
