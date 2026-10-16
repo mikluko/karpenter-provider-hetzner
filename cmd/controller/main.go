@@ -11,6 +11,7 @@ import (
 
 	"sigs.k8s.io/karpenter/pkg/cloudprovider/overlay"
 	"sigs.k8s.io/karpenter/pkg/controllers"
+	"sigs.k8s.io/karpenter/pkg/controllers/node/health"
 	"sigs.k8s.io/karpenter/pkg/controllers/state"
 	"sigs.k8s.io/karpenter/pkg/operator"
 
@@ -59,8 +60,16 @@ func main() {
 	// Wrap with the overlay decorator (required by NewControllers).
 	cloudProvider := overlay.Decorate(baseCloudProvider, op.GetClient(), op.InstanceTypeStore)
 
+	// nil unless the NodeRepair feature gate is on; then node repair and
+	// cluster state share it.
+	repairPolicyMatcher, err := health.NewRepairPolicyMatcher(ctx, cloudProvider)
+	if err != nil {
+		log.FromContext(ctx).Error(err, "invalid repair policies")
+		return
+	}
+
 	// Create cluster state.
-	clusterState := state.NewCluster(op.Clock, op.GetClient(), cloudProvider)
+	clusterState := state.NewCluster(op.Clock, op.GetClient(), cloudProvider, state.WithRepairPolicyMatcher(repairPolicyMatcher))
 
 	// Our NodeClass status controller (network + image validation, Ready).
 	nodeClassController := nodeclass.NewController(op.GetClient(), &hcloudClient.Network, &hcloudClient.Location, &hcloudClient.Firewall, &hcloudClient.SSHKey, imageProvider)
@@ -77,6 +86,7 @@ func main() {
 			baseCloudProvider,
 			clusterState,
 			op.InstanceTypeStore,
+			op.PredictionStore,
 		),
 		nodeClassController,
 	)...).Start(ctx)
