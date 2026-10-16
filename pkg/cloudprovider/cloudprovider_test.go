@@ -18,6 +18,8 @@ import (
 	crmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	karpv1 "sigs.k8s.io/karpenter/pkg/apis/v1"
 	karpcp "sigs.k8s.io/karpenter/pkg/cloudprovider"
+	"sigs.k8s.io/karpenter/pkg/controllers/node/health"
+	"sigs.k8s.io/karpenter/pkg/operator/options"
 
 	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
 	"github.com/mikluko/karpenter-provider-hetzner/pkg/cloudprovider"
@@ -53,6 +55,29 @@ func TestRepairPolicies(t *testing.T) {
 	policies := cp.RepairPolicies()
 	if len(policies) != 2 {
 		t.Fatalf("RepairPolicies() returned %d policies, want 2", len(policies))
+	}
+}
+
+// TestRepairPolicies_AcceptedByNodeRepair runs the policies through the validator
+// core applies at startup when the NodeRepair feature gate is on.
+func TestRepairPolicies_AcceptedByNodeRepair(t *testing.T) {
+	ctx := options.ToContext(context.Background(), &options.Options{
+		FeatureGates: options.FeatureGates{NodeRepair: true},
+	})
+	matcher, err := health.NewRepairPolicyMatcher(ctx, newTestCloudProvider())
+	if err != nil {
+		t.Fatalf("NewRepairPolicyMatcher() error: %v", err)
+	}
+	if matcher == nil {
+		t.Fatal("NewRepairPolicyMatcher() returned nil with NodeRepair enabled")
+	}
+}
+
+func TestReboot_NotImplemented(t *testing.T) {
+	cp := newTestCloudProvider()
+	err := cp.Reboot(context.Background(), &karpv1.NodeClaim{}, "op-1")
+	if !karpcp.IsNodeRebootNotImplementedError(err) {
+		t.Fatalf("Reboot() = %v, want a NodeRebootNotImplementedError", err)
 	}
 }
 

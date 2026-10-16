@@ -74,18 +74,29 @@ func (cp *CloudProvider) GetSupportedNodeClasses() []status.Object {
 	return []status.Object{&apiv1.HCloudNodeClass{}}
 }
 
-// RepairPolicies returns the repair policies for unhealthy nodes.
+// Reboot reports that in-place reboot is not supported, so core rejects any
+// reboot policy that requires it.
+func (cp *CloudProvider) Reboot(_ context.Context, _ *karpv1.NodeClaim, _ string) error {
+	return karpcp.NewNodeRebootNotImplementedError()
+}
+
+// RepairPolicies returns the repair policies for unhealthy nodes. Core requires
+// exactly one policy without a ReasonRegex, the default fallback, and it must
+// replace the node.
 func (cp *CloudProvider) RepairPolicies() []karpcp.RepairPolicy {
 	return []karpcp.RepairPolicy{
 		{
 			ConditionType:      corev1.NodeReady,
 			ConditionStatus:    corev1.ConditionFalse,
 			TolerationDuration: 5 * time.Minute,
+			Action:             karpcp.ReplaceNode,
 		},
 		{
 			ConditionType:      corev1.NodeReady,
 			ConditionStatus:    corev1.ConditionUnknown,
+			ReasonRegex:        ".*",
 			TolerationDuration: 5 * time.Minute,
+			Action:             karpcp.ReplaceNode,
 		},
 	}
 }
