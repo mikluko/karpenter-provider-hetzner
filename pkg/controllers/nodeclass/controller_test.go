@@ -407,11 +407,11 @@ func TestReconcile_FirewallNotFound(t *testing.T) {
 func TestReconcile_UserDataSecretValid(t *testing.T) {
 	_ = apiv1.SchemeBuilder.AddToScheme(scheme.Scheme)
 	nc := newNodeClass()
-	nc.Spec.UserDataSecretRef = &apiv1.UserDataSecretReference{
+	nc.Spec.Bootstrap.BeforeJoin = &apiv1.UserDataPart{SecretRef: &apiv1.SecretKeyReference{
 		Namespace: "kube-system",
 		Name:      "worker-userdata",
 		Key:       "userData",
-	}
+	}}
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "worker-userdata", Namespace: "kube-system"},
 		Data:       map[string][]byte{"userData": []byte("machine: {}\n")},
@@ -445,11 +445,11 @@ func TestReconcile_UserDataSecretValid(t *testing.T) {
 func TestReconcile_UserDataKeyMissing(t *testing.T) {
 	_ = apiv1.SchemeBuilder.AddToScheme(scheme.Scheme)
 	nc := newNodeClass()
-	nc.Spec.UserDataSecretRef = &apiv1.UserDataSecretReference{
+	nc.Spec.Bootstrap.BeforeJoin = &apiv1.UserDataPart{SecretRef: &apiv1.SecretKeyReference{
 		Namespace: "kube-system",
 		Name:      "worker-userdata",
 		Key:       "userData",
-	}
+	}}
 	// Secret exists but has a different key — "userData" is absent.
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "worker-userdata", Namespace: "kube-system"},
@@ -480,11 +480,11 @@ func TestReconcile_UserDataKeyMissing(t *testing.T) {
 func TestReconcile_UserDataSecretMissing(t *testing.T) {
 	_ = apiv1.SchemeBuilder.AddToScheme(scheme.Scheme)
 	nc := newNodeClass()
-	nc.Spec.UserDataSecretRef = &apiv1.UserDataSecretReference{
+	nc.Spec.Bootstrap.BeforeJoin = &apiv1.UserDataPart{SecretRef: &apiv1.SecretKeyReference{
 		Namespace: "kube-system",
 		Name:      "does-not-exist",
 		Key:       "userData",
-	}
+	}}
 	// Secret is NOT added to the fake client.
 	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).
 		WithObjects(nc).WithStatusSubresource(nc).Build()
@@ -749,5 +749,36 @@ func TestResolvedImagesGeneration_AbsentConditionFailsSafe(t *testing.T) {
 	nc.Generation = 2
 	if got := resolvedImagesGeneration(nc); got != 1 {
 		t.Errorf("resolvedImagesGeneration = %d, want 1 (the generation the images were resolved under)", got)
+	}
+}
+
+func TestNodeClassesForSecret(t *testing.T) {
+	_ = apiv1.SchemeBuilder.AddToScheme(scheme.Scheme)
+	ref := func(name, ns, secret string) *apiv1.HCloudNodeClass {
+		nc := newNodeClass()
+		nc.Name = name
+		if secret != "" {
+			nc.Spec.Bootstrap.AfterJoin = &apiv1.UserDataPart{SecretRef: &apiv1.SecretKeyReference{Namespace: ns, Name: secret, Key: "userdata"}}
+		}
+		return nc
+	}
+	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(
+		ref("uses-it", "karpenter", "bootstrap"),
+		ref("other-secret", "karpenter", "other"),
+		ref("other-namespace", "default", "bootstrap"),
+		ref("no-ref", "", ""),
+	).Build()
+	twice := ref("twice", "karpenter", "bootstrap")
+	twice.Spec.Bootstrap.BeforeJoin = twice.Spec.Bootstrap.AfterJoin
+	if err := kube.Create(context.Background(), twice); err != nil {
+		t.Fatal(err)
+	}
+	c := NewController(kube, fakeNetworks{}, validLocations(), fakeFirewalls{}, fakeSSHKeys{}, nil)
+
+	got := c.nodeClassesForSecret(context.Background(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "karpenter", Name: "bootstrap"},
+	})
+	if len(got) != 2 || got[0].Name != "twice" || got[1].Name != "uses-it" {
+		t.Errorf("requests = %v, want twice and uses-it, once each", got)
 	}
 }

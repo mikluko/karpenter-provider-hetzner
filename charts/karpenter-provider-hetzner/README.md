@@ -10,10 +10,11 @@ kubectl create secret generic hcloud-token -n kube-system --from-literal=token=$
 helm install karpenter-provider-hetzner ./charts/karpenter-provider-hetzner \
   --namespace kube-system \
   --set clusterName=my-cluster \
+  --set apiServerURL=https://10.0.0.2:6443 \
   --set auth.secretRef.name=hcloud-token
 ```
 
-`clusterName` is required; the controller fails to start without it.
+`clusterName` and `apiServerURL` are required; the chart refuses to render without them.
 
 ## Upgrading from upstream chart 1.x (CRD `v1`)
 
@@ -88,6 +89,7 @@ unchanged.
 | Key | Default | Description |
 |-----|---------|-------------|
 | `clusterName` | `""` (required) | Scopes which servers the controller manages |
+| `apiServerURL` | `""` (required) | API server address new nodes join through |
 | `nameOverride` | `""` | Replaces the chart name in generated names and `app.kubernetes.io/name` |
 | `fullnameOverride` | `""` | Replaces the generated resource name outright |
 | `replicas` | `1` | Controller replicas |
@@ -96,6 +98,7 @@ unchanged.
 | `image.pullPolicy` | `IfNotPresent` | Image pull policy |
 | `auth.secretRef.name` | `hcloud-token` | Secret holding the Hetzner token |
 | `auth.secretRef.key` | `token` | Key within the secret |
+| `leaderElection.name` | `""` (`karpenter-leader-election`) | Name of the leader election lease. Two Karpenter providers in one namespace need different names |
 | `hcloud.apiTimeout` | `30s` | Bounds a single hcloud HTTP request (Go duration, max `5m`). Per request, not per operation |
 | `serviceAccount.create` | `true` | Create the service account |
 | `serviceAccount.name` | `""` (release-scoped name) | Service account name |

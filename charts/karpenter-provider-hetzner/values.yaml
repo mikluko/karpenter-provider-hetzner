@@ -29,6 +29,12 @@ hcloud:
   # healthy API.
   apiTimeout: 30s
 
+leaderElection:
+  # name is the lease the controller replicas elect a leader with. Karpenter
+  # providers sharing a namespace each need their own. Empty keeps Karpenter's
+  # default, karpenter-leader-election.
+  name: ""
+
 serviceAccount:
   create: true
   # Empty means the release-scoped generated name. Before 3.0.0 this defaulted to
@@ -72,6 +78,10 @@ args: []
 
 # Required: scopes managed servers so multiple clusters can share one Hetzner project.
 clusterName: ""
+
+# Required: the API server address new nodes join through, as they reach it
+# before they have joined, such as https://10.0.0.2:6443.
+apiServerURL: ""
 
 metrics:
   port: 8080

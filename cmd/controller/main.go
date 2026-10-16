@@ -18,6 +18,7 @@ import (
 	// Register our HCloudNodeClass v1 types.
 	_ "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
 
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/bootstrap"
 	hetznercp "github.com/mikluko/karpenter-provider-hetzner/pkg/cloudprovider"
 	"github.com/mikluko/karpenter-provider-hetzner/pkg/controllers/nodeclass"
 	hetznerop "github.com/mikluko/karpenter-provider-hetzner/pkg/operator"
@@ -49,12 +50,20 @@ func main() {
 	typeProvider := instancetype.NewProvider(&hcloudClient.ServerType)
 	imageProvider := imagefamily.NewProvider(&hcloudClient.Image)
 
+	clusterCA, err := hetznerop.ClusterCA(op.GetConfig())
+	if err != nil {
+		log.FromContext(ctx).Error(err, "failed to load the cluster CA")
+		return
+	}
+	joiner := bootstrap.NewJoiner(op.GetClient(), cfg.APIServerURL, clusterCA)
+
 	// Create the cloud provider.
 	baseCloudProvider := hetznercp.NewCloudProvider(
 		op.GetClient(),
 		instanceProvider,
 		typeProvider,
 		imageProvider,
+		joiner,
 	)
 
 	// Wrap with the overlay decorator (required by NewControllers).

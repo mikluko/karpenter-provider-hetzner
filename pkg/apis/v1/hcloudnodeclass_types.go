@@ -55,14 +55,8 @@ type HCloudNodeClassSpec struct {
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// +optional
-	UserData string `json:"userData,omitempty"`
-
-	// UserDataSecretRef sources userData from a Secret instead of inline. When
-	// set, it takes precedence over UserData. The Secret is read at server-create
-	// time; its value never appears in the NodeClass spec, status, or git.
-	// +optional
-	UserDataSecretRef *UserDataSecretReference `json:"userDataSecretRef,omitempty"`
+	// Bootstrap is how a server joins the cluster.
+	Bootstrap Bootstrap `json:"bootstrap"`
 
 	// EnablePublicIPv4 controls whether created servers get a public IPv4.
 	// Defaults to true (Hetzner's default). Set false on private-network
@@ -81,11 +75,11 @@ type HCloudNodeClassSpec struct {
 	// the kubelet, so Karpenter can subtract them when computing how much of a
 	// server a pod can actually use.
 	//
-	// This provider does not render the bootstrap: userData is supplied by the
-	// operator, so these values describe what that userData does rather than
-	// configure it. They must be kept in agreement with it. Declaring less than
-	// the bootstrap reserves makes Karpenter believe a server is larger than it
-	// is, which strands pods on nodes too small for them.
+	// These values describe what the bootstrap does rather than configure it:
+	// the generated join sets no reservations, so any it applies come from the
+	// operator's parts and must be kept in agreement with them. Declaring less
+	// than the bootstrap reserves makes Karpenter believe a server is larger than
+	// it is, which strands pods on nodes too small for them.
 	//
 	// When omitted, a flat 100m CPU / 100Mi memory kubeReserved is assumed.
 	// +optional
@@ -135,14 +129,61 @@ type ReservedQuantity string
 // +kubebuilder:validation:MaxLength=32
 type EvictionThreshold string
 
-// UserDataSecretReference points at a Secret key holding the server userData.
-type UserDataSecretReference struct {
+// Bootstrap is the cloud-init a server boots with: the operator's before-join
+// part, the join, and the operator's after-join part, in that order. Every
+// part reads its inputs from /etc/karpenter-hetzner/join.env.
+// +kubebuilder:validation:XValidation:message="k0sVersion is required unless join replaces the generated join",rule="has(self.join) || has(self.k0sVersion)"
+type Bootstrap struct {
+	// BeforeJoin runs before the join, and may append KUBELET_EXTRA_ARGS to join.env.
+	// +optional
+	BeforeJoin *UserDataPart `json:"beforeJoin,omitempty"`
+
+	// Join replaces the generated k0s join.
+	// +optional
+	Join *UserDataPart `json:"join,omitempty"`
+
+	// AfterJoin runs after the join.
+	// +optional
+	AfterJoin *UserDataPart `json:"afterJoin,omitempty"`
+
+	// K0sVersion is the k0s release the generated join installs, such as
+	// v1.34.1+k0s.0. It should match the control plane's.
+	// +kubebuilder:validation:Pattern=`^v[0-9]+\.[0-9]+\.[0-9]+\+k0s\.[0-9]+$`
+	// +optional
+	K0sVersion string `json:"k0sVersion,omitempty"`
+}
+
+// UserDataPart is one cloud-init document, such as a shell script or a
+// cloud-config, given inline or read from a Secret when a server is created.
+// +kubebuilder:validation:XValidation:message="exactly one of inline and secretRef is required",rule="has(self.inline) != has(self.secretRef)"
+type UserDataPart struct {
+	// +kubebuilder:validation:MinLength=1
+	// +optional
+	Inline string `json:"inline,omitempty"`
+
+	// +optional
+	SecretRef *SecretKeyReference `json:"secretRef,omitempty"`
+}
+
+// SecretKeyReference points at one key of a Secret.
+type SecretKeyReference struct {
 	// Namespace of the Secret (required: HCloudNodeClass is cluster-scoped).
 	Namespace string `json:"namespace"`
 	// Name of the Secret.
 	Name string `json:"name"`
-	// Key within the Secret's data holding the userData.
+	// Key within the Secret's data.
 	Key string `json:"key"`
+}
+
+// SecretRefs returns the Secret references among the bootstrap's parts.
+func (b *Bootstrap) SecretRefs() []*SecretKeyReference {
+	var refs []*SecretKeyReference
+	for _, p := range []*UserDataPart{b.BeforeJoin, b.Join, b.AfterJoin} {
+		if p != nil && p.SecretRef != nil {
+			refs = append(refs, p.SecretRef)
+		}
+	}
+	return refs
 }
 
 type ImageSelector struct {

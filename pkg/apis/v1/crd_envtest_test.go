@@ -37,6 +37,8 @@ func startCRDClient(t *testing.T) client.Client {
 	return c
 }
 
+var validBootstrap = map[string]any{"k0sVersion": "v1.34.1+k0s.0"}
+
 // TestCRD_KubeletAdmission checks spec.kubelet admission end to end: the schema
 // must compile and fit the CEL cost budget, and the key rules must admit every
 // kubelet signal while refusing anything else.
@@ -54,6 +56,7 @@ func TestCRD_KubeletAdmission(t *testing.T) {
 				"locations":     []any{"nbg1"},
 				"networkID":     int64(1),
 				"imageSelector": map[string]any{"family": "debian"},
+				"bootstrap":     validBootstrap,
 				"kubelet":       kubelet,
 			},
 		}})
@@ -107,6 +110,7 @@ func TestCRD_NetworkAdmission(t *testing.T) {
 			spec := map[string]any{
 				"locations":     []any{"nbg1"},
 				"imageSelector": map[string]any{"family": "debian"},
+				"bootstrap":     validBootstrap,
 			}
 			for k, v := range tc.spec {
 				spec[k] = v
@@ -116,6 +120,49 @@ func TestCRD_NetworkAdmission(t *testing.T) {
 				"kind":       "HCloudNodeClass",
 				"metadata":   map[string]any{"name": fmt.Sprintf("net-%d", n)},
 				"spec":       spec,
+			}})
+			if (err == nil) != tc.admit {
+				t.Errorf("admitted=%v, want %v (err: %v)", err == nil, tc.admit, err)
+			}
+		})
+	}
+}
+
+// TestCRD_BootstrapAdmission checks that the generated join needs a k0s
+// version, and that each part is given exactly one way.
+func TestCRD_BootstrapAdmission(t *testing.T) {
+	c := startCRDClient(t)
+
+	inline := map[string]any{"inline": "#!/bin/sh\n"}
+	secretRef := map[string]any{"secretRef": map[string]any{"namespace": "kube-system", "name": "worker", "key": "join"}}
+	n := 0
+	for name, tc := range map[string]struct {
+		bootstrap map[string]any
+		admit     bool
+	}{
+		"k0s version":                 {map[string]any{"k0sVersion": "v1.34.1+k0s.0"}, true},
+		"k0s version and parts":       {map[string]any{"k0sVersion": "v1.34.1+k0s.0", "beforeJoin": inline, "afterJoin": secretRef}, true},
+		"join replaced":               {map[string]any{"join": secretRef}, true},
+		"nothing":                     {map[string]any{}, false},
+		"parts without join or k0s":   {map[string]any{"beforeJoin": inline}, false},
+		"k0s version without build":   {map[string]any{"k0sVersion": "v1.34.1+k0s"}, false},
+		"k0s version, shell injected": {map[string]any{"k0sVersion": "v1.34.1+k0s.0;reboot"}, false},
+		"part both ways":              {map[string]any{"k0sVersion": "v1.34.1+k0s.0", "beforeJoin": map[string]any{"inline": "x", "secretRef": secretRef["secretRef"]}}, false},
+		"part neither way":            {map[string]any{"k0sVersion": "v1.34.1+k0s.0", "afterJoin": map[string]any{}}, false},
+		"part empty inline":           {map[string]any{"k0sVersion": "v1.34.1+k0s.0", "afterJoin": map[string]any{"inline": ""}}, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			n++
+			err := c.Create(context.Background(), &unstructured.Unstructured{Object: map[string]any{
+				"apiVersion": "karpenter.hetzner.cloud/v1",
+				"kind":       "HCloudNodeClass",
+				"metadata":   map[string]any{"name": fmt.Sprintf("bootstrap-%d", n)},
+				"spec": map[string]any{
+					"locations":     []any{"nbg1"},
+					"networkID":     int64(1),
+					"imageSelector": map[string]any{"family": "debian"},
+					"bootstrap":     tc.bootstrap,
+				},
 			}})
 			if (err == nil) != tc.admit {
 				t.Errorf("admitted=%v, want %v (err: %v)", err == nil, tc.admit, err)

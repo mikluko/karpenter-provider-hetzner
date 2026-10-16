@@ -45,6 +45,105 @@ spec:
             type: object
           spec:
             properties:
+              bootstrap:
+                description: Bootstrap is how a server joins the cluster.
+                properties:
+                  afterJoin:
+                    description: AfterJoin runs after the join.
+                    properties:
+                      inline:
+                        minLength: 1
+                        type: string
+                      secretRef:
+                        description: SecretKeyReference points at one key of a Secret.
+                        properties:
+                          key:
+                            description: Key within the Secret's data.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                          namespace:
+                            description: 'Namespace of the Secret (required: HCloudNodeClass
+                              is cluster-scoped).'
+                            type: string
+                        required:
+                        - key
+                        - name
+                        - namespace
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: exactly one of inline and secretRef is required
+                      rule: has(self.inline) != has(self.secretRef)
+                  beforeJoin:
+                    description: BeforeJoin runs before the join, and may append KUBELET_EXTRA_ARGS
+                      to join.env.
+                    properties:
+                      inline:
+                        minLength: 1
+                        type: string
+                      secretRef:
+                        description: SecretKeyReference points at one key of a Secret.
+                        properties:
+                          key:
+                            description: Key within the Secret's data.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                          namespace:
+                            description: 'Namespace of the Secret (required: HCloudNodeClass
+                              is cluster-scoped).'
+                            type: string
+                        required:
+                        - key
+                        - name
+                        - namespace
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: exactly one of inline and secretRef is required
+                      rule: has(self.inline) != has(self.secretRef)
+                  join:
+                    description: Join replaces the generated k0s join.
+                    properties:
+                      inline:
+                        minLength: 1
+                        type: string
+                      secretRef:
+                        description: SecretKeyReference points at one key of a Secret.
+                        properties:
+                          key:
+                            description: Key within the Secret's data.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                          namespace:
+                            description: 'Namespace of the Secret (required: HCloudNodeClass
+                              is cluster-scoped).'
+                            type: string
+                        required:
+                        - key
+                        - name
+                        - namespace
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: exactly one of inline and secretRef is required
+                      rule: has(self.inline) != has(self.secretRef)
+                  k0sVersion:
+                    description: |-
+                      K0sVersion is the k0s release the generated join installs, such as
+                      v1.34.1+k0s.0. It should match the control plane's.
+                    pattern: ^v[0-9]+\.[0-9]+\.[0-9]+\+k0s\.[0-9]+$
+                    type: string
+                type: object
+                x-kubernetes-validations:
+                - message: k0sVersion is required unless join replaces the generated
+                    join
+                  rule: has(self.join) || has(self.k0sVersion)
               enablePublicIPv4:
                 default: true
                 description: |-
@@ -88,11 +187,11 @@ spec:
                   the kubelet, so Karpenter can subtract them when computing how much of a
                   server a pod can actually use.
 
-                  This provider does not render the bootstrap: userData is supplied by the
-                  operator, so these values describe what that userData does rather than
-                  configure it. They must be kept in agreement with it. Declaring less than
-                  the bootstrap reserves makes Karpenter believe a server is larger than it
-                  is, which strands pods on nodes too small for them.
+                  These values describe what the bootstrap does rather than configure it:
+                  the generated join sets no reservations, so any it applies come from the
+                  operator's parts and must be kept in agreement with them. Declaring less
+                  than the bootstrap reserves makes Karpenter believe a server is larger than
+                  it is, which strands pods on nodes too small for them.
 
                   When omitted, a flat 100m CPU / 100Mi memory kubeReserved is assumed.
                 properties:
@@ -178,30 +277,8 @@ spec:
                   format: int64
                   type: integer
                 type: array
-              userData:
-                type: string
-              userDataSecretRef:
-                description: |-
-                  UserDataSecretRef sources userData from a Secret instead of inline. When
-                  set, it takes precedence over UserData. The Secret is read at server-create
-                  time; its value never appears in the NodeClass spec, status, or git.
-                properties:
-                  key:
-                    description: Key within the Secret's data holding the userData.
-                    type: string
-                  name:
-                    description: Name of the Secret.
-                    type: string
-                  namespace:
-                    description: 'Namespace of the Secret (required: HCloudNodeClass
-                      is cluster-scoped).'
-                    type: string
-                required:
-                - key
-                - name
-                - namespace
-                type: object
             required:
+            - bootstrap
             - imageSelector
             - locations
             type: object

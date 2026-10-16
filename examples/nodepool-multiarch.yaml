@@ -20,8 +20,8 @@
 #   architectures.  The NodeClass stays Ready while one architecture resolves,
 #   and the other pool then launches nothing.
 #
-# The userData Secret is the one docs/debian-bootstrap.md creates; its
-# cloud-init installs the packages for whichever architecture it runs on.
+# The generated join downloads the k0s binary for whichever architecture it
+# runs on.
 
 apiVersion: karpenter.hetzner.cloud/v1
 kind: HCloudNodeClass
@@ -51,10 +51,9 @@ spec:
   enablePublicIPv4: false
   enablePublicIPv6: false
 
-  userDataSecretRef:
-    namespace: kube-system
-    name: debian-worker-userdata
-    key: cloud-init.yaml
+  bootstrap:
+    # ADJUST: the release tag `sudo k0s version` prints on a controller.
+    k0sVersion: v1.34.1+k0s.0
 
 ---
 # NodePool: amd64 — x86-64 dedicated CPU (ccx) for latency-sensitive work.

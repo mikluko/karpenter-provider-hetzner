@@ -1,6 +1,9 @@
 {{- if not .Values.clusterName }}
 {{- fail "clusterName is required: set --set clusterName=<your-cluster>" }}
 {{- end }}
+{{- if not .Values.apiServerURL }}
+{{- fail "apiServerURL is required: set --set apiServerURL=https://<address>:6443" }}
+{{- end }}
 {{- include "karpenter-hetzner.requireInt" (dict "value" .Values.replicas "name" "replicas" "allowZero" true) }}
 apiVersion: apps/v1
 kind: Deployment
@@ -66,12 +69,18 @@ spec:
                   key: {{ .Values.auth.secretRef.key }}
             - name: CLUSTER_NAME
               value: {{ .Values.clusterName | quote }}
+            - name: API_SERVER_URL
+              value: {{ .Values.apiServerURL | quote }}
             - name: HCLOUD_API_TIMEOUT
               value: {{ .Values.hcloud.apiTimeout | quote }}
             - name: METRICS_PORT
               value: {{ .Values.metrics.port | quote }}
             - name: HEALTH_PROBE_PORT
               value: {{ .Values.healthProbe.port | quote }}
+            {{- with .Values.leaderElection.name }}
+            - name: LEADER_ELECTION_NAME
+              value: {{ . | quote }}
+            {{- end }}
           ports:
             - name: http-metrics
               containerPort: {{ .Values.metrics.port }}

@@ -14,15 +14,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/bootstrap"
 	"github.com/mikluko/karpenter-provider-hetzner/pkg/metrics"
 	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
 )
@@ -119,7 +120,7 @@ func (c *Controller) Reconcile(ctx context.Context, nc *apiv1.HCloudNodeClass) (
 		c.warnf(nc, reason, "ValidateResources", "%s", msg)
 	}
 
-	// Validate the userData secret ref (if set).
+	// Validate the Secret references of the bootstrap parts.
 	if reason, msg, unknown, ok := c.validateUserData(ctx, nc); ok {
 		nc.StatusConditions().SetTrue(apiv1.ConditionTypeUserDataReady)
 	} else if unknown {
@@ -300,23 +301,19 @@ func (c *Controller) validateResources(ctx context.Context, nc *apiv1.HCloudNode
 	return "", "", false, true
 }
 
-// validateUserData checks that the referenced userData Secret and key exist and
-// are non-empty. Returns ok=true when there is nothing to validate or it
-// resolves successfully; unknown=true on a transient API error.
+// validateUserData checks that every Secret key the bootstrap parts reference
+// exists and is non-empty. Returns ok=true when they all resolve; unknown=true
+// on a transient API error.
 func (c *Controller) validateUserData(ctx context.Context, nc *apiv1.HCloudNodeClass) (reason, msg string, unknown, ok bool) {
-	ref := nc.Spec.UserDataSecretRef
-	if ref == nil {
-		return "", "", false, true
-	}
-	secret := &corev1.Secret{}
-	if err := c.kubeClient.Get(ctx, types.NamespacedName{Namespace: ref.Namespace, Name: ref.Name}, secret); err != nil {
-		if apierrors.IsNotFound(err) {
-			return "UserDataSecretNotFound", fmt.Sprintf("secret %s/%s not found", ref.Namespace, ref.Name), false, false
+	if _, err := bootstrap.ResolveParts(ctx, c.kubeClient, &nc.Spec.Bootstrap); err != nil {
+		switch {
+		case apierrors.IsNotFound(err):
+			return "UserDataSecretNotFound", err.Error(), false, false
+		case errors.Is(err, bootstrap.ErrKeyMissing):
+			return "UserDataKeyMissing", err.Error(), false, false
+		default:
+			return "UserDataCheckFailed", err.Error(), true, false
 		}
-		return "UserDataCheckFailed", err.Error(), true, false
-	}
-	if v, present := secret.Data[ref.Key]; !present || len(v) == 0 {
-		return "UserDataKeyMissing", fmt.Sprintf("secret %s/%s has no non-empty key %q", ref.Namespace, ref.Name, ref.Key), false, false
 	}
 	return "", "", false, true
 }
@@ -376,11 +373,33 @@ func (c *Controller) resolveImages(ctx context.Context, nc *apiv1.HCloudNodeClas
 	return out
 }
 
-// Register wires the controller into the manager.
+// Register wires the controller into the manager. A node class is reconciled
+// again whenever a Secret one of its bootstrap parts references changes.
 func (c *Controller) Register(_ context.Context, m manager.Manager) error {
 	c.recorder = m.GetEventRecorder(c.Name())
 	return controllerruntime.NewControllerManagedBy(m).
 		For(&apiv1.HCloudNodeClass{}).
+		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(c.nodeClassesForSecret)).
 		Named(c.Name()).
 		Complete(reconcile.AsReconciler(m.GetClient(), c))
+}
+
+// nodeClassesForSecret returns a request for every node class whose
+// bootstrap parts reference secret.
+func (c *Controller) nodeClassesForSecret(ctx context.Context, secret client.Object) []reconcile.Request {
+	list := &apiv1.HCloudNodeClassList{}
+	if err := c.kubeClient.List(ctx, list); err != nil {
+		logf.FromContext(ctx).Error(err, "listing node classes for a secret change")
+		return nil
+	}
+	var requests []reconcile.Request
+	for _, nc := range list.Items {
+		for _, ref := range nc.Spec.Bootstrap.SecretRefs() {
+			if ref.Namespace == secret.GetNamespace() && ref.Name == secret.GetName() {
+				requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&nc)})
+				break
+			}
+		}
+	}
+	return requests
 }
