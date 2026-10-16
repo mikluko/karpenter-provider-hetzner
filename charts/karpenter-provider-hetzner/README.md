@@ -96,6 +96,7 @@ unchanged.
 | `image.pullPolicy` | `IfNotPresent` | Image pull policy |
 | `auth.secretRef.name` | `hcloud-token` | Secret holding the Hetzner token |
 | `auth.secretRef.key` | `token` | Key within the secret |
+| `leaderElection.name` | `""` (`karpenter-leader-election`) | Name of the leader election lease. Two Karpenter providers in one namespace need different names |
 | `hcloud.apiTimeout` | `30s` | Bounds a single hcloud HTTP request (Go duration, max `5m`). Per request, not per operation |
 | `serviceAccount.create` | `true` | Create the service account |
 | `serviceAccount.name` | `""` (release-scoped name) | Service account name |

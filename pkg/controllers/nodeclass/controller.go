@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/tools/events"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -376,11 +377,31 @@ func (c *Controller) resolveImages(ctx context.Context, nc *apiv1.HCloudNodeClas
 	return out
 }
 
-// Register wires the controller into the manager.
+// Register wires the controller into the manager. A node class is reconciled
+// again whenever the Secret its userDataSecretRef names changes.
 func (c *Controller) Register(_ context.Context, m manager.Manager) error {
 	c.recorder = m.GetEventRecorder(c.Name())
 	return controllerruntime.NewControllerManagedBy(m).
 		For(&apiv1.HCloudNodeClass{}).
+		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(c.nodeClassesForSecret)).
 		Named(c.Name()).
 		Complete(reconcile.AsReconciler(m.GetClient(), c))
+}
+
+// nodeClassesForSecret returns a request for every node class whose
+// userDataSecretRef names secret.
+func (c *Controller) nodeClassesForSecret(ctx context.Context, secret client.Object) []reconcile.Request {
+	list := &apiv1.HCloudNodeClassList{}
+	if err := c.kubeClient.List(ctx, list); err != nil {
+		logf.FromContext(ctx).Error(err, "listing node classes for a secret change")
+		return nil
+	}
+	var requests []reconcile.Request
+	for _, nc := range list.Items {
+		ref := nc.Spec.UserDataSecretRef
+		if ref != nil && ref.Namespace == secret.GetNamespace() && ref.Name == secret.GetName() {
+			requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&nc)})
+		}
+	}
+	return requests
 }

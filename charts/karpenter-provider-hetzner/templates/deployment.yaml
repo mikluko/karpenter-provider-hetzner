@@ -72,6 +72,10 @@ spec:
               value: {{ .Values.metrics.port | quote }}
             - name: HEALTH_PROBE_PORT
               value: {{ .Values.healthProbe.port | quote }}
+            {{- with .Values.leaderElection.name }}
+            - name: LEADER_ELECTION_NAME
+              value: {{ . | quote }}
+            {{- end }}
           ports:
             - name: http-metrics
               containerPort: {{ .Values.metrics.port }}

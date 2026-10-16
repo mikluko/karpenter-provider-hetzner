@@ -751,3 +751,29 @@ func TestResolvedImagesGeneration_AbsentConditionFailsSafe(t *testing.T) {
 		t.Errorf("resolvedImagesGeneration = %d, want 1 (the generation the images were resolved under)", got)
 	}
 }
+
+func TestNodeClassesForSecret(t *testing.T) {
+	_ = apiv1.SchemeBuilder.AddToScheme(scheme.Scheme)
+	ref := func(name, ns, secret string) *apiv1.HCloudNodeClass {
+		nc := newNodeClass()
+		nc.Name = name
+		if secret != "" {
+			nc.Spec.UserDataSecretRef = &apiv1.UserDataSecretReference{Namespace: ns, Name: secret, Key: "userdata"}
+		}
+		return nc
+	}
+	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(
+		ref("uses-it", "karpenter", "bootstrap"),
+		ref("other-secret", "karpenter", "other"),
+		ref("other-namespace", "default", "bootstrap"),
+		ref("no-ref", "", ""),
+	).Build()
+	c := NewController(kube, fakeNetworks{}, validLocations(), fakeFirewalls{}, fakeSSHKeys{}, nil)
+
+	got := c.nodeClassesForSecret(context.Background(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "karpenter", Name: "bootstrap"},
+	})
+	if len(got) != 1 || got[0].Name != "uses-it" {
+		t.Errorf("requests = %v, want only uses-it", got)
+	}
+}
