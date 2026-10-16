@@ -14,7 +14,9 @@ This is a fork of
 the original implementation, maintained independently since its 3.0.1 release.
 It was forked because contributions there stalled: no pull request was merged
 between 2026-09-07 and 2026-10-03, and eight of the nine contributed pull
-requests opened in that time waited 10 to 26 days without a review.
+requests opened in that time waited 10 to 26 days without a review. With
+AI-assisted development and a provider this straightforward, carrying changes in
+a fork costs less than waiting for a maintainer to review them.
 
 ## Status
 
