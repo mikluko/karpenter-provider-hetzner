@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/karpenter/pkg/scheduling"
 
 	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/bootstrap"
 	"github.com/mikluko/karpenter-provider-hetzner/pkg/metrics"
 	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
 	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/instance"
@@ -47,6 +48,7 @@ type CloudProvider struct {
 	instanceProvider *instance.Provider
 	typeProvider     *instancetype.Provider
 	imageProvider    *imagefamily.Provider
+	joiner           *bootstrap.Joiner
 }
 
 // NewCloudProvider creates a new CloudProvider.
@@ -55,12 +57,14 @@ func NewCloudProvider(
 	instanceProvider *instance.Provider,
 	typeProvider *instancetype.Provider,
 	imageProvider *imagefamily.Provider,
+	joiner *bootstrap.Joiner,
 ) *CloudProvider {
 	return &CloudProvider{
 		kubeClient:       kubeClient,
 		instanceProvider: instanceProvider,
 		typeProvider:     typeProvider,
 		imageProvider:    imageProvider,
+		joiner:           joiner,
 	}
 }
 
@@ -285,10 +289,9 @@ func (cp *CloudProvider) Create(ctx context.Context, nodeClaim *karpv1.NodeClaim
 	// Collect node pool name from NodeClaim labels (may be empty).
 	nodePoolName := nodeClaim.Labels[karpv1.NodePoolLabelKey]
 
-	// Resolve userData, preferring the Secret reference over inline userData.
-	userData, err := cp.resolveUserData(ctx, nodeClass)
+	userData, revokeJoinToken, err := cp.joiner.UserData(ctx, nodeClass, nodeClaim)
 	if err != nil {
-		return nil, fmt.Errorf("resolving userData: %w", err)
+		return nil, fmt.Errorf("building userData: %w", err)
 	}
 
 	// Create the server.
@@ -309,6 +312,9 @@ func (cp *CloudProvider) Create(ctx context.Context, nodeClaim *karpv1.NodeClaim
 		EnablePublicIPv6:       nodeClass.Spec.PublicIPv6Enabled(),
 	})
 	if err != nil {
+		if revokeErr := revokeJoinToken(ctx); revokeErr != nil {
+			log.Error(revokeErr, "revoking the join token of a server that was not created")
+		}
 		if karpcp.IsInsufficientCapacityError(err) {
 			cp.typeProvider.MarkUnavailable(selected.Name, location)
 		}
@@ -525,24 +531,6 @@ func (cp *CloudProvider) IsDrifted(ctx context.Context, nodeClaim *karpv1.NodeCl
 	// would produce false positives. They are omitted rather than faked.
 
 	return "", nil
-}
-
-// resolveUserData returns the userData for a NodeClass, reading it from the
-// referenced Secret when UserDataSecretRef is set (takes precedence over inline UserData).
-func (cp *CloudProvider) resolveUserData(ctx context.Context, nc *apiv1.HCloudNodeClass) (string, error) {
-	ref := nc.Spec.UserDataSecretRef
-	if ref == nil {
-		return nc.Spec.UserData, nil
-	}
-	secret := &corev1.Secret{}
-	if err := cp.kubeClient.Get(ctx, types.NamespacedName{Namespace: ref.Namespace, Name: ref.Name}, secret); err != nil {
-		return "", fmt.Errorf("reading userData secret %s/%s: %w", ref.Namespace, ref.Name, err)
-	}
-	data, ok := secret.Data[ref.Key]
-	if !ok || len(data) == 0 {
-		return "", fmt.Errorf("userData secret %s/%s has no non-empty key %q", ref.Namespace, ref.Name, ref.Key)
-	}
-	return string(data), nil
 }
 
 // resolveNodeClass fetches the HCloudNodeClass referenced by ref.

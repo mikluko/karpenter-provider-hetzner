@@ -79,6 +79,10 @@ args: []
 # Required: scopes managed servers so multiple clusters can share one Hetzner project.
 clusterName: ""
 
+# Required: the API server address new nodes join through, as they reach it
+# before they have joined, such as https://10.0.0.2:6443.
+apiServerURL: ""
+
 metrics:
   port: 8080
 healthProbe:

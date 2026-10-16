@@ -5,6 +5,7 @@ package cloudprovider_test
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	crmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	karpv1 "sigs.k8s.io/karpenter/pkg/apis/v1"
@@ -22,14 +24,17 @@ import (
 	"sigs.k8s.io/karpenter/pkg/operator/options"
 
 	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/bootstrap"
 	"github.com/mikluko/karpenter-provider-hetzner/pkg/cloudprovider"
 	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
 	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/instance"
 	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/instancetype"
 )
 
+const testAPIServerURL = "https://10.0.0.2:6443"
+
 func newTestCloudProvider() *cloudprovider.CloudProvider {
-	return cloudprovider.NewCloudProvider(nil, nil, nil, nil)
+	return cloudprovider.NewCloudProvider(nil, nil, nil, nil, nil)
 }
 
 func TestName(t *testing.T) {
@@ -177,7 +182,8 @@ func buildCP(t *testing.T, nc *apiv1.HCloudNodeClass, server *hcloud.Server) (*c
 	cp := cloudprovider.NewCloudProvider(kube,
 		instance.NewProvider(fsc, "test-cluster"),
 		instancetype.NewProvider(stc),
-		imagefamily.NewProvider(imgc))
+		imagefamily.NewProvider(imgc),
+		bootstrap.NewJoiner(kube, testAPIServerURL, []byte("CA")))
 
 	nodeClaim := &karpv1.NodeClaim{ObjectMeta: metav1.ObjectMeta{Name: "claim"}}
 	nodeClaim.Labels = map[string]string{}
@@ -211,6 +217,7 @@ func baselineNodeClass() *apiv1.HCloudNodeClass {
 			Locations:     []string{"nbg1"},
 			NetworkID:     1,
 			ImageSelector: apiv1.ImageSelector{Family: "debian"},
+			Bootstrap:     apiv1.Bootstrap{K0sVersion: "v1.34.1+k0s.0"},
 		},
 	}
 }
@@ -262,7 +269,8 @@ func buildCPWithImages(t *testing.T, nc *apiv1.HCloudNodeClass, types []*hcloud.
 	cp := cloudprovider.NewCloudProvider(kube,
 		instance.NewProvider(fsc, "test-cluster"),
 		typeProvider,
-		imagefamily.NewProvider(imgc))
+		imagefamily.NewProvider(imgc),
+		bootstrap.NewJoiner(kube, testAPIServerURL, []byte("CA")))
 	return cp, fsc, typeProvider
 }
 
@@ -283,7 +291,7 @@ func withResolvedImages(nc *apiv1.HCloudNodeClass, images ...apiv1.ResolvedImage
 
 // createNodeClaim returns a NodeClaim with empty requirements (compatible with any type).
 func createNodeClaim() *karpv1.NodeClaim {
-	nc := &karpv1.NodeClaim{ObjectMeta: metav1.ObjectMeta{Name: "claim"}}
+	nc := &karpv1.NodeClaim{ObjectMeta: metav1.ObjectMeta{Name: "claim", UID: "claim-uid"}}
 	nc.Spec.NodeClassRef = &karpv1.NodeClassReference{Name: "default", Group: apiv1.Group, Kind: "HCloudNodeClass"}
 	return nc
 }
@@ -503,124 +511,103 @@ func TestCreate_NoCompatibleType(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// UserData secret resolution tests
+// Bootstrap tests
 // ---------------------------------------------------------------------------
 
-// TestCreate_UserDataFromSecret verifies that when UserDataSecretRef is set, the
-// userData passed to the server-create call comes from the referenced Secret, NOT
-// from the inline UserData field.
-func TestCreate_UserDataFromSecret(t *testing.T) {
-	nc := baselineNodeClass()
-	nc.Spec.UserData = "inline-should-be-ignored"
-	nc.Spec.UserDataSecretRef = &apiv1.UserDataSecretReference{
-		Namespace: "kube-system",
-		Name:      "worker-userdata",
-		Key:       "userData",
-	}
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "worker-userdata", Namespace: "kube-system"},
-		Data:       map[string][]byte{"userData": []byte("machine:\n  type: worker\n")},
-	}
-
+// buildCPWithObjects wires a CloudProvider over a fake API holding nc and objs,
+// with one cx22 type and image 42.
+func buildCPWithObjects(t *testing.T, nc *apiv1.HCloudNodeClass, objs ...client.Object) (*cloudprovider.CloudProvider, *fakeServerClient, client.Client) {
+	t.Helper()
 	_ = apiv1.SchemeBuilder.AddToScheme(scheme.Scheme)
-	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nc, secret).Build()
+	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(append(objs, nc)...).Build()
 	fsc := &fakeServerClient{servers: map[int64]*hcloud.Server{}}
-	stc := &fakeServerTypeClient{types: []*hcloud.ServerType{cx22Type()}}
-	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86}}}
 	cp := cloudprovider.NewCloudProvider(kube,
 		instance.NewProvider(fsc, "test-cluster"),
-		instancetype.NewProvider(stc),
-		imagefamily.NewProvider(imgc))
+		instancetype.NewProvider(&fakeServerTypeClient{types: []*hcloud.ServerType{cx22Type()}}),
+		imagefamily.NewProvider(&fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86}}}),
+		bootstrap.NewJoiner(kube, testAPIServerURL, []byte("CA")))
+	return cp, fsc, kube
+}
+
+func joinTokenSecrets(t *testing.T, kube client.Client) []corev1.Secret {
+	t.Helper()
+	list := &corev1.SecretList{}
+	if err := kube.List(context.Background(), list, client.InNamespace("kube-system"), client.HasLabels{bootstrap.LabelNodeClaim}); err != nil {
+		t.Fatal(err)
+	}
+	return list.Items
+}
+
+// TestCreate_UserData verifies the server boots the parts around the generated
+// join, and that the join token it carries exists for its NodeClaim.
+func TestCreate_UserData(t *testing.T) {
+	nc := baselineNodeClass()
+	nc.Spec.Bootstrap.BeforeJoin = &apiv1.UserDataPart{SecretRef: &apiv1.SecretKeyReference{Namespace: "kube-system", Name: "worker", Key: "before"}}
+	nc.Spec.Bootstrap.AfterJoin = &apiv1.UserDataPart{Inline: "#!/bin/sh\necho after\n"}
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "worker", Namespace: "kube-system"},
+		Data:       map[string][]byte{"before": []byte("#!/bin/sh\necho before\n")},
+	}
+	cp, fsc, kube := buildCPWithObjects(t, nc, secret)
 
 	if _, err := cp.Create(context.Background(), createNodeClaim()); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if got := fsc.lastUserData(); got != "machine:\n  type: worker\n" {
-		t.Errorf("expected userData from secret, got %q", got)
+	ud := fsc.lastUserData()
+	for _, want := range []string{"echo before", "K0S_VERSION=v1.34.1+k0s.0", "echo after", "NODE_NAME='claim'"} {
+		if !strings.Contains(ud, want) {
+			t.Errorf("userData lacks %q", want)
+		}
+	}
+	tokens := joinTokenSecrets(t, kube)
+	if len(tokens) != 1 || tokens[0].OwnerReferences[0].UID != "claim-uid" {
+		t.Fatalf("want one join token owned by the NodeClaim, got %+v", tokens)
 	}
 }
 
-// TestCreate_UserDataInlineWhenNoRef verifies that when UserDataSecretRef is nil,
-// the inline UserData field is passed through to the server-create call unchanged.
-func TestCreate_UserDataInlineWhenNoRef(t *testing.T) {
-	nc := baselineNodeClass()
-	nc.Spec.UserData = "cloud-init-inline"
-	// UserDataSecretRef is intentionally left nil.
+// TestCreate_RevokesJoinTokenWhenServerCreateFails verifies no join token
+// outlives a server that was never created.
+func TestCreate_RevokesJoinTokenWhenServerCreateFails(t *testing.T) {
+	cp, fsc, kube := buildCPWithObjects(t, baselineNodeClass())
+	fsc.createErr = errors.New("boom")
 
-	_ = apiv1.SchemeBuilder.AddToScheme(scheme.Scheme)
-	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nc).Build()
-	fsc := &fakeServerClient{servers: map[int64]*hcloud.Server{}}
-	stc := &fakeServerTypeClient{types: []*hcloud.ServerType{cx22Type()}}
-	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86}}}
-	cp := cloudprovider.NewCloudProvider(kube,
-		instance.NewProvider(fsc, "test-cluster"),
-		instancetype.NewProvider(stc),
-		imagefamily.NewProvider(imgc))
-
-	if _, err := cp.Create(context.Background(), createNodeClaim()); err != nil {
-		t.Fatalf("Create: %v", err)
+	if _, err := cp.Create(context.Background(), createNodeClaim()); err == nil {
+		t.Fatal("expected Create to fail")
 	}
-	if got := fsc.lastUserData(); got != "cloud-init-inline" {
-		t.Errorf("expected inline userData %q, got %q", "cloud-init-inline", got)
+	if tokens := joinTokenSecrets(t, kube); len(tokens) != 0 {
+		t.Errorf("join tokens left behind: %d", len(tokens))
 	}
 }
 
-// TestCreate_UserDataSecretKeyMissing verifies that Create returns an error when
-// UserDataSecretRef points to a Secret that exists but does not contain the
-// referenced key (key absent == invalid, same as secret missing).
-func TestCreate_UserDataSecretKeyMissing(t *testing.T) {
-	nc := baselineNodeClass()
-	nc.Spec.UserDataSecretRef = &apiv1.UserDataSecretReference{
-		Namespace: "kube-system",
-		Name:      "worker-userdata",
-		Key:       "userData",
-	}
-	// Secret exists but contains a different key — "userData" is absent.
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "worker-userdata", Namespace: "kube-system"},
-		Data:       map[string][]byte{"other": []byte("x")},
-	}
+// TestCreate_PartSecretUnresolvable verifies Create fails, minting nothing,
+// when a part's Secret or key is missing.
+func TestCreate_PartSecretUnresolvable(t *testing.T) {
+	for name, secret := range map[string]*corev1.Secret{
+		"secret missing": nil,
+		"key missing": {
+			ObjectMeta: metav1.ObjectMeta{Name: "worker", Namespace: "kube-system"},
+			Data:       map[string][]byte{"other": []byte("x")},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			nc := baselineNodeClass()
+			nc.Spec.Bootstrap.Join = &apiv1.UserDataPart{SecretRef: &apiv1.SecretKeyReference{Namespace: "kube-system", Name: "worker", Key: "join"}}
+			var objs []client.Object
+			if secret != nil {
+				objs = append(objs, secret)
+			}
+			cp, fsc, kube := buildCPWithObjects(t, nc, objs...)
 
-	_ = apiv1.SchemeBuilder.AddToScheme(scheme.Scheme)
-	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nc, secret).Build()
-	fsc := &fakeServerClient{servers: map[int64]*hcloud.Server{}}
-	stc := &fakeServerTypeClient{types: []*hcloud.ServerType{cx22Type()}}
-	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86}}}
-	cp := cloudprovider.NewCloudProvider(kube,
-		instance.NewProvider(fsc, "test-cluster"),
-		instancetype.NewProvider(stc),
-		imagefamily.NewProvider(imgc))
-
-	_, err := cp.Create(context.Background(), createNodeClaim())
-	if err == nil {
-		t.Fatal("expected error when secret exists but referenced key is absent, got nil")
-	}
-}
-
-// TestCreate_UserDataSecretMissing verifies that Create returns an error when
-// UserDataSecretRef points to a Secret that does not exist in the cluster.
-func TestCreate_UserDataSecretMissing(t *testing.T) {
-	nc := baselineNodeClass()
-	nc.Spec.UserDataSecretRef = &apiv1.UserDataSecretReference{
-		Namespace: "kube-system",
-		Name:      "does-not-exist",
-		Key:       "userData",
-	}
-
-	_ = apiv1.SchemeBuilder.AddToScheme(scheme.Scheme)
-	// Secret is intentionally NOT added to the fake client.
-	kube := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nc).Build()
-	fsc := &fakeServerClient{servers: map[int64]*hcloud.Server{}}
-	stc := &fakeServerTypeClient{types: []*hcloud.ServerType{cx22Type()}}
-	imgc := &fakeImageClient{images: []*hcloud.Image{{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86}}}
-	cp := cloudprovider.NewCloudProvider(kube,
-		instance.NewProvider(fsc, "test-cluster"),
-		instancetype.NewProvider(stc),
-		imagefamily.NewProvider(imgc))
-
-	_, err := cp.Create(context.Background(), createNodeClaim())
-	if err == nil {
-		t.Fatal("expected error when userDataSecretRef points to a missing Secret, got nil")
+			if _, err := cp.Create(context.Background(), createNodeClaim()); err == nil {
+				t.Fatal("expected Create to fail")
+			}
+			if fsc.lastOpts.ServerType != nil {
+				t.Error("a server was created")
+			}
+			if tokens := joinTokenSecrets(t, kube); len(tokens) != 0 {
+				t.Errorf("join tokens minted: %d", len(tokens))
+			}
+		})
 	}
 }
 
@@ -1220,7 +1207,8 @@ func TestCreate_LiveImageWrongArchIsRejected(t *testing.T) {
 		instancetype.NewProvider(&fakeServerTypeClient{types: []*hcloud.ServerType{armType("cax31", "0.0100")}}),
 		imagefamily.NewProvider(unfilteredImages{
 			img: &hcloud.Image{ID: 42, Description: "Debian 13", Architecture: hcloud.ArchitectureX86},
-		}))
+		}),
+		bootstrap.NewJoiner(kube, testAPIServerURL, []byte("CA")))
 
 	_, err := cp.Create(context.Background(), createNodeClaim())
 	if err == nil {

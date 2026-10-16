@@ -19,13 +19,44 @@ HCloudNodeClass spec fields:
 | `enablePublicIPv4` | `bool` | no | `true` | Attach a public IPv4. Hetzner bills it separately. |
 | `enablePublicIPv6` | `bool` | no | `true` | Attach a public IPv6. |
 | `labels` | `map[string]string` | no | None | Extra hcloud labels on every server. |
-| `userData` | `string` | no | None | Inline cloud-init document. |
-| `userDataSecretRef` | `{namespace, name, key}` | no | None | Secret key holding the userData. Read when a server is created. Takes precedence over `userData`. |
-| `kubelet` | object | no | See [kubelet](#kubelet) | Kubelet reservations the userData applies. |
+| `bootstrap` | object | yes | None | How a server joins the cluster. See [bootstrap](#bootstrap). |
+| `kubelet` | object | no | See [kubelet](#kubelet) | Kubelet reservations the bootstrap applies. |
+
+### bootstrap
+
+`bootstrap` is the cloud-init a server boots with: the provider's `join.env`,
+then `beforeJoin`, the join, and `afterJoin`. [About node bootstrap](about-node-bootstrap.md)
+explains the parts and the order they run in.
+
+bootstrap fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `beforeJoin` | part | no | Runs before the join. |
+| `join` | part | no | Replaces the generated k0s join. |
+| `afterJoin` | part | no | Runs after the join. |
+| `k0sVersion` | `string` | unless `join` is set | k0s release tag the generated join installs, such as `v1.34.1+k0s.0`. |
+
+A part is one cloud-init document, such as a shell script or a cloud-config,
+given exactly one way:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `inline` | `string` | The document. |
+| `secretRef` | `{namespace, name, key}` | Secret key holding the document. Read when a server is created. |
+
+`join.env` variables, in `/etc/karpenter-hetzner/join.env`:
+
+| Variable | Value |
+|----------|-------|
+| `JOIN_TOKEN` | k0s worker join token for the node's bootstrap token. |
+| `NODE_NAME` | NodeClaim name, also the server's hostname. |
+| `REGISTER_TAINTS` | Comma-separated taints for `--register-with-taints`. |
+| `KUBELET_EXTRA_ARGS` | Not written by the provider. A `beforeJoin` part may append it; the generated join passes it to the kubelet. |
 
 ### kubelet
 
-`kubelet` describes what the userData configures on the kubelet. The provider
+`kubelet` describes what the bootstrap configures on the kubelet. The provider
 does not configure the kubelet; it subtracts these values from each server type's
 capacity to compute allocatable. Declaring less than the bootstrap reserves
 leaves pods Pending on nodes too small for them.
@@ -60,7 +91,7 @@ HCloudNodeClass status fields:
 
 | Field | Description |
 |-------|-------------|
-| `conditions` | `ImagesReady`, `LocationsReady`, `NetworkReady`, `ResourcesReady`, and `UserDataReady`, aggregated into `Ready`. |
+| `conditions` | `ImagesReady`, `LocationsReady`, `NetworkReady`, `ResourcesReady`, and `UserDataReady`, aggregated into `Ready`. `UserDataReady` is False while a bootstrap part's Secret or key is missing. |
 | `resolvedImages` | One image ID per hcloud architecture, `x86` or `arm`. |
 
 ## Node labels
@@ -82,6 +113,7 @@ Environment variables the controller reads. The Helm chart sets each from its va
 |----------|----------|---------|-------------|
 | `HCLOUD_TOKEN` | yes | None | Hetzner Cloud API token. |
 | `CLUSTER_NAME` | yes | None | Cluster name. The controller manages only servers labelled with it. |
+| `API_SERVER_URL` | yes | None | `https` address of the API server that new nodes join through. |
 | `HCLOUD_API_TIMEOUT` | no | `30s` | Timeout of a single hcloud API request, as a Go duration. At most `5m`. |
 | `METRICS_PORT` | no | `8080` | Prometheus metrics port. |
 | `HEALTH_PROBE_PORT` | no | `8081` | Health and readiness probe port. |

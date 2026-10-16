@@ -44,18 +44,18 @@ SBOM. Pin a released version in production.
 A `NodePool` references an `HCloudNodeClass`. When pods are unschedulable,
 Karpenter asks this provider for the instance types it can offer, picks the
 cheapest compatible offering, and the provider creates the server. The server
-boots with the `userData` from the node class, which joins it to the cluster.
+boots with a cloud-init document the provider builds from the node class's
+`bootstrap`: your parts around a join that installs k0s, with a join token made
+for that node alone.
 
 ## Install
 
 You need:
 
-- a Kubernetes cluster on Hetzner Cloud whose nodes have provider IDs of the form
-  `hcloud://<server-id>`, set by the
-  [hcloud Cloud Controller Manager](https://github.com/hetznercloud/hcloud-cloud-controller-manager)
-  or by the node's bootstrap, as
-  [About node bootstrap](docs/about-node-bootstrap.md#what-karpenter-expects-of-a-new-node)
-  describes;
+- a k0s cluster on Hetzner Cloud, or another cluster whose nodes you join with
+  a join of your own, as
+  [About node bootstrap](docs/about-node-bootstrap.md) describes;
+- the address of its API server, as a new server reaches it before it joins;
 - a Hetzner Cloud API token with read and write access.
 
 To install:
@@ -75,11 +75,12 @@ To install:
      oci://ghcr.io/mikluko/charts/karpenter-provider-hetzner \
      --namespace kube-system \
      --set clusterName=<cluster-name> \
+     --set apiServerURL=https://<api-server-address>:6443 \
      --set auth.secretRef.name=hcloud-token
    ```
 
-`clusterName` is required. The controller manages only servers labelled with it,
-and does not start without it.
+`clusterName` and `apiServerURL` are required. The controller manages only
+servers labelled with `clusterName`, and new nodes join through `apiServerURL`.
 
 The chart installs three CRDs from its `crds/` directory: `HCloudNodeClass`, and
 the Karpenter `NodePool` and `NodeClaim`.
@@ -130,10 +131,8 @@ spec:
     family: debian
     version: "13"
   enablePublicIPv4: false
-  userDataSecretRef:
-    namespace: kube-system
-    name: debian-worker-userdata
-    key: cloud-init.yaml
+  bootstrap:
+    k0sVersion: v1.34.1+k0s.0
 ---
 apiVersion: karpenter.sh/v1
 kind: NodePool
@@ -162,10 +161,10 @@ spec:
     consolidationPolicy: WhenEmptyOrUnderutilized
 ```
 
-The `userData` is a cloud-init document that joins the server to your cluster.
-[Join Debian nodes with kubeadm](docs/debian-bootstrap.md) walks through one, and
-[About node bootstrap](docs/about-node-bootstrap.md) covers what any bootstrap
-has to provide.
+`k0sVersion` names the k0s release the node installs, and should match the
+control plane's. [Join Debian nodes to a k0s cluster](docs/debian-bootstrap.md)
+walks through a node class, and [About node bootstrap](docs/about-node-bootstrap.md)
+covers the parts around the join and how to replace it.
 
 The [`examples/`](examples/) directory holds the node class and node pool from
 that guide, and a pair of node pools for amd64 and arm64.

@@ -5,10 +5,13 @@ package operator
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	"k8s.io/client-go/rest"
 )
 
 var clusterNameRE = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,63}$`)
@@ -38,10 +41,13 @@ type Config struct {
 	// operation: the SDK's action waiter polls in a loop of separate requests, so
 	// a create that legitimately takes minutes is many short requests.
 	APITimeout time.Duration
+
+	// APIServerURL is the API server address a new node joins through.
+	APIServerURL string
 }
 
 // LoadConfig reads provider configuration from the environment.
-// CLUSTER_NAME is required; HCLOUD_API_TIMEOUT is optional.
+// CLUSTER_NAME and API_SERVER_URL are required; HCLOUD_API_TIMEOUT is optional.
 func LoadConfig() (*Config, error) {
 	name := strings.TrimSpace(os.Getenv("CLUSTER_NAME"))
 	if name == "" {
@@ -54,7 +60,24 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Config{ClusterName: name, APITimeout: timeout}, nil
+	apiServerURL, err := loadAPIServerURL()
+	if err != nil {
+		return nil, err
+	}
+	return &Config{ClusterName: name, APITimeout: timeout, APIServerURL: apiServerURL}, nil
+}
+
+// loadAPIServerURL reads API_SERVER_URL, which must be an https URL with a host.
+func loadAPIServerURL() (string, error) {
+	raw := strings.TrimSpace(os.Getenv("API_SERVER_URL"))
+	if raw == "" {
+		return "", fmt.Errorf("API_SERVER_URL environment variable is required")
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return "", fmt.Errorf("API_SERVER_URL %q must be an https URL such as https://10.0.0.2:6443", raw)
+	}
+	return raw, nil
 }
 
 // loadAPITimeout reads HCLOUD_API_TIMEOUT as a Go duration (e.g. "45s", "1m"),
@@ -80,4 +103,19 @@ func loadAPITimeout() (time.Duration, error) {
 		return 0, fmt.Errorf("HCLOUD_API_TIMEOUT %q exceeds the %s maximum", raw, maxAPITimeout)
 	}
 	return d, nil
+}
+
+// ClusterCA returns the CA bundle restConfig trusts the API server with.
+func ClusterCA(restConfig *rest.Config) ([]byte, error) {
+	if len(restConfig.CAData) > 0 {
+		return restConfig.CAData, nil
+	}
+	if restConfig.CAFile == "" {
+		return nil, fmt.Errorf("the controller's API client trusts no CA to hand new nodes")
+	}
+	ca, err := os.ReadFile(restConfig.CAFile)
+	if err != nil {
+		return nil, fmt.Errorf("reading cluster CA: %w", err)
+	}
+	return ca, nil
 }

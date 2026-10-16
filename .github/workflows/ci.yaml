@@ -62,25 +62,25 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: azure/setup-helm@v5
-      - run: helm lint charts/karpenter-provider-hetzner --set clusterName=ci
+      - run: helm lint charts/karpenter-provider-hetzner --set clusterName=ci --set apiServerURL=https://10.0.0.2:6443
       - name: Render the documented install
         run: |
           helm template karpenter-provider-hetzner charts/karpenter-provider-hetzner \
-            --set clusterName=ci > /tmp/default.yaml
+            --set clusterName=ci --set apiServerURL=https://10.0.0.2:6443 > /tmp/default.yaml
       - name: Render every optional resource
         run: |
           helm template karpenter-provider-hetzner charts/karpenter-provider-hetzner \
-            --set clusterName=ci --set replicas=2 \
+            --set clusterName=ci --set apiServerURL=https://10.0.0.2:6443 --set replicas=2 \
             --set serviceMonitor.enabled=true \
             --set podDisruptionBudget.enabled=true \
             --set podDisruptionBudget.minAvailable=1 > /dev/null
       - name: The lease name reaches the controller only when set
         run: |
           set -euo pipefail
-          if helm template ci charts/karpenter-provider-hetzner --set clusterName=ci | grep -q LEADER_ELECTION_NAME; then
+          if helm template ci charts/karpenter-provider-hetzner --set clusterName=ci --set apiServerURL=https://10.0.0.2:6443 | grep -q LEADER_ELECTION_NAME; then
             echo "LEADER_ELECTION_NAME rendered without leaderElection.name" >&2; exit 1
           fi
-          helm template ci charts/karpenter-provider-hetzner --set clusterName=ci \
+          helm template ci charts/karpenter-provider-hetzner --set clusterName=ci --set apiServerURL=https://10.0.0.2:6443 \
             --set leaderElection.name=hetzner-leader-election \
             | grep -A1 'name: LEADER_ELECTION_NAME' | grep -q 'value: "hetzner-leader-election"'
       - name: Two releases in one namespace must not share a selector
@@ -88,7 +88,7 @@ jobs:
           set -euo pipefail
           for r in ci-a ci-b; do
             helm template "$r" charts/karpenter-provider-hetzner \
-              --namespace shared --set clusterName="$r" > "/tmp/$r.yaml"
+              --namespace shared --set clusterName="$r" --set apiServerURL=https://10.0.0.2:6443 > "/tmp/$r.yaml"
           done
           # Every selector must name its own release. If the instance label were
           # dropped again, both files would carry the same selector block and the

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-16
+
+### Added
+
+- Each server joins with its own bootstrap token, which expires after an hour and is deleted with its NodeClaim. Every bootstrap part can read it from `/etc/karpenter-hetzner/join.env`, together with `NODE_NAME` and `REGISTER_TAINTS`.
+- By default the provider generates the join: it installs k0s `bootstrap.k0sVersion`, sets the node's provider ID from the metadata service, and registers the node with the NodeClaim's taints.
+
+### Changed
+
+- **Breaking:** `HCloudNodeClass.spec.bootstrap` replaces `spec.userData` and `spec.userDataSecretRef`. A server boots `bootstrap.beforeJoin`, the join, and `bootstrap.afterJoin`; `bootstrap.join` replaces the generated join. Each part is `inline` or a `secretRef`. The `HCloudNodeClass` CRD changes, so apply it before `helm upgrade`, as the README describes.
+- **Breaking:** the chart requires `apiServerURL`, the API server address that new nodes join through.
+
 ## [0.5.0] - 2026-10-16
 
 ### Added
@@ -70,7 +82,8 @@ history is in the [upstream changelog](https://github.com/mikluko/karpenter-prov
 - **Breaking:** the `talos` and `ubuntu` image families; `debian` is the only one.
 - The chart's Artifact Hub annotations.
 
-[Unreleased]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.2.0...v0.3.0
