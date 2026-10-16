@@ -1,4 +1,4 @@
-# karpenter-provider-hetzner
+# karpenter-provider-hetzner (fork)
 
 [![CI](https://github.com/mikluko/karpenter-provider-hetzner/actions/workflows/ci.yaml/badge.svg)](https://github.com/mikluko/karpenter-provider-hetzner/actions/workflows/ci.yaml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/mikluko/karpenter-provider-hetzner)](https://goreportcard.com/report/github.com/mikluko/karpenter-provider-hetzner)
@@ -8,6 +8,13 @@ A [Karpenter](https://karpenter.sh) cloud provider for
 [Hetzner Cloud](https://www.hetzner.com/cloud). It creates Hetzner Cloud servers
 as Kubernetes nodes for pending pods, choosing the cheapest server type that fits
 from Hetzner's live pricing, and removes them when they are no longer needed.
+
+This is a fork of
+[stubbi/karpenter-provider-hetzner](https://github.com/stubbi/karpenter-provider-hetzner),
+the original implementation, maintained independently since its 3.0.1 release.
+It was forked because contributions there stalled: no pull request was merged
+between 2026-09-07 and 2026-10-03, and eight of the nine contributed pull
+requests opened in that time waited 10 to 26 days without a review.
 
 ## Status
 
