@@ -100,7 +100,7 @@ func TestNewHTTPClient_BoundsEveryPhase(t *testing.T) {
 }
 
 func TestLoadConfig_APITimeoutDefaultsWhenUnset(t *testing.T) {
-	t.Setenv("CLUSTER_NAME", "tugarin")
+	t.Setenv("CLUSTER_NAME", "test-cluster")
 	t.Setenv("HCLOUD_API_TIMEOUT", "")
 
 	cfg, err := LoadConfig()
@@ -113,7 +113,7 @@ func TestLoadConfig_APITimeoutDefaultsWhenUnset(t *testing.T) {
 }
 
 func TestLoadConfig_APITimeoutFromEnv(t *testing.T) {
-	t.Setenv("CLUSTER_NAME", "tugarin")
+	t.Setenv("CLUSTER_NAME", "test-cluster")
 	t.Setenv("HCLOUD_API_TIMEOUT", "45s")
 
 	cfg, err := LoadConfig()
@@ -131,7 +131,7 @@ func TestLoadConfig_APITimeoutFromEnv(t *testing.T) {
 // misbehaving.
 func TestLoadConfig_RejectsBadAPITimeout(t *testing.T) {
 	for _, bad := range []string{"soon", "30", "0s", "-1s", "10m"} {
-		t.Setenv("CLUSTER_NAME", "tugarin")
+		t.Setenv("CLUSTER_NAME", "test-cluster")
 		t.Setenv("HCLOUD_API_TIMEOUT", bad)
 		if _, err := LoadConfig(); err == nil {
 			t.Errorf("expected an error for HCLOUD_API_TIMEOUT %q", bad)
