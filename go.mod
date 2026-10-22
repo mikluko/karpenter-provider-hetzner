@@ -3,7 +3,7 @@ module github.com/mikluko/karpenter-provider-hetzner
 go 1.27.2
 
 require (
-	github.com/awslabs/operatorpkg v0.0.0-20261006163503-855c7d06c363
+	github.com/awslabs/operatorpkg v0.0.0-20261019155633-4e7ba6e9cd42
 	github.com/hetznercloud/hcloud-go/v2 v2.52.0
 	github.com/prometheus/client_golang v1.25.0
 	k8s.io/api v0.37.1
