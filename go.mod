@@ -1,6 +1,6 @@
 module github.com/mikluko/karpenter-provider-hetzner
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/awslabs/operatorpkg v0.0.0-20261006163503-855c7d06c363
