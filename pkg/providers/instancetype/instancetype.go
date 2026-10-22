@@ -134,6 +134,7 @@ func (p *Provider) List(ctx context.Context, nodeClass *apiv1.HCloudNodeClass) (
 		types = append(types, toInstanceType(st))
 	}
 	p.store(types)
+	metrics.RecordInstanceTypePrices(offeringPrices(types))
 
 	return p.applyAvailability(filterByLocations(types, locations), nodeClass), nil
 }
@@ -345,6 +346,25 @@ func hourlyNetPrice(p hcloud.ServerTypeLocationPricing) (price float64, ok bool)
 		return v / 730, true
 	}
 	return 0, false
+}
+
+// offeringPrices lists the priced offerings of types. Retired locations stay in, since
+// a node launched there before retirement still costs its price.
+func offeringPrices(types []*cloudprovider.InstanceType) []metrics.OfferingPrice {
+	var prices []metrics.OfferingPrice
+	for _, it := range types {
+		for _, o := range it.Offerings {
+			if o.Price <= 0 {
+				continue
+			}
+			prices = append(prices, metrics.OfferingPrice{
+				InstanceType: it.Name,
+				Zone:         o.Requirements.Get(corev1.LabelTopologyZone).Any(),
+				Hourly:       o.Price,
+			})
+		}
+	}
+	return prices
 }
 
 // filterByLocations returns only the instance types that have at least one offering in the requested locations.

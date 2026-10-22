@@ -101,6 +101,15 @@ var (
 		Name:      "instance_type_cache_total",
 		Help:      "Total number of instance-type cache lookups by result.",
 	}, []string{"result"})
+
+	// instanceTypeHourlyPrice is the net hourly price of each priced offering, labelled
+	// like core's node metrics so it joins them on instance_type and zone. It excludes
+	// the primary-IPv4 surcharge, as the catalogue does.
+	instanceTypeHourlyPrice = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "karpenter_hetzner",
+		Name:      "instance_type_hourly_price",
+		Help:      "Net hourly price of a Hetzner server type in a location, in the account currency, without the primary-IPv4 surcharge.",
+	}, []string{"instance_type", "zone"})
 )
 
 func init() {
@@ -114,7 +123,24 @@ func init() {
 		instanceTypeCacheTotal,
 		selectionSkippedTotal,
 		imageResolutionErrorsTotal,
+		instanceTypeHourlyPrice,
 	)
+}
+
+// OfferingPrice is the net hourly price of one server type in one location.
+type OfferingPrice struct {
+	InstanceType string
+	Zone         string
+	Hourly       float64
+}
+
+// RecordInstanceTypePrices replaces the published prices with prices, so a type or
+// location dropped from the catalogue stops being reported.
+func RecordInstanceTypePrices(prices []OfferingPrice) {
+	instanceTypeHourlyPrice.Reset()
+	for _, p := range prices {
+		instanceTypeHourlyPrice.WithLabelValues(p.InstanceType, p.Zone).Set(p.Hourly)
+	}
 }
 
 // RecordServerCreate records a server create result and its duration.
