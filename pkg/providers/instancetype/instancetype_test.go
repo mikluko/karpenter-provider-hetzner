@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/karpenter/pkg/cloudprovider"
 
 	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	"github.com/mikluko/karpenter-provider-hetzner/pkg/metrics"
 )
 
 // mockServerTypeClient is a fake ServerTypeClient for testing.
@@ -390,5 +391,18 @@ func TestList_PreservesCatalogueUnavailability(t *testing.T) {
 	}
 	if nbg1 := offeringFor(types[0], "nbg1"); nbg1 == nil || !nbg1.Available {
 		t.Errorf("nbg1 should remain available through List, got %+v", nbg1)
+	}
+}
+
+func TestOfferingPrices_PricedOfferingsOnly(t *testing.T) {
+	st := makeServerType("cx22", hcloud.ArchitectureX86, hcloud.CPUTypeShared, 2, 4, 40,
+		[]hcloud.ServerTypeLocationPricing{
+			{Location: &hcloud.Location{Name: "nbg1"}, Hourly: hcloud.Price{Net: "0.0070"}},
+			{Location: &hcloud.Location{Name: "hel1"}},
+		})
+	got := offeringPrices([]*cloudprovider.InstanceType{toInstanceType(st)})
+	want := []metrics.OfferingPrice{{InstanceType: "cx22", Zone: "nbg1", Hourly: 0.0070}}
+	if len(got) != 1 || got[0] != want[0] {
+		t.Errorf("want %v, got %v", want, got)
 	}
 }

@@ -137,3 +137,50 @@ func TestHistogramRegistered(t *testing.T) {
 		t.Error("histogram karpenter_hetzner_server_create_duration_seconds not found in registry")
 	}
 }
+
+// gaugeValues returns the gauge values of a metric family keyed by the joined
+// values of labels, in order.
+func gaugeValues(t *testing.T, name string, labels ...string) map[string]float64 {
+	t.Helper()
+	mfs, err := crmetrics.Registry.(prometheus.Gatherer).Gather()
+	if err != nil {
+		t.Fatalf("gather: %v", err)
+	}
+	out := map[string]float64{}
+	for _, mf := range mfs {
+		if mf.GetName() != name {
+			continue
+		}
+		for _, m := range mf.GetMetric() {
+			byName := map[string]string{}
+			for _, lp := range m.GetLabel() {
+				byName[lp.GetName()] = lp.GetValue()
+			}
+			key := ""
+			for i, l := range labels {
+				if i > 0 {
+					key += "/"
+				}
+				key += byName[l]
+			}
+			out[key] = m.GetGauge().GetValue()
+		}
+	}
+	return out
+}
+
+func TestRecordInstanceTypePrices_ReplacesThePreviousSet(t *testing.T) {
+	const name = "karpenter_hetzner_instance_type_hourly_price"
+	metrics.RecordInstanceTypePrices([]metrics.OfferingPrice{
+		{InstanceType: "cx23", Zone: "fsn1", Hourly: 0.0061},
+		{InstanceType: "cx33", Zone: "fsn1", Hourly: 0.0104},
+	})
+	metrics.RecordInstanceTypePrices([]metrics.OfferingPrice{
+		{InstanceType: "cx23", Zone: "fsn1", Hourly: 0.0065},
+	})
+
+	got := gaugeValues(t, name, "instance_type", "zone")
+	if len(got) != 1 || got["cx23/fsn1"] != 0.0065 {
+		t.Errorf("want only cx23/fsn1=0.0065, got %v", got)
+	}
+}

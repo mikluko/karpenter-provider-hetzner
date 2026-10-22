@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `karpenter_hetzner_instance_type_hourly_price{instance_type, zone}` is the net hourly price of each server type in each location, without the primary-IPv4 surcharge. Its labels match Karpenter's node metrics, so multiplying it by the node count gives what a node pool costs.
+
 ## [0.6.0] - 2026-10-16
 
 ### Added
