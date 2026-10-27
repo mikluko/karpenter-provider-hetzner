@@ -16,8 +16,7 @@ jobs:
       - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - uses: https://github.com/go-task/setup-task@v2
-      - run: task test
+      - run: go run github.com/go-task/task/v3/cmd/task@v3.54.0 test
 
   lint:
     runs-on: ubuntu-latest
@@ -37,8 +36,7 @@ jobs:
       - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - uses: https://github.com/go-task/setup-task@v2
-      - run: task generate-verify
+      - run: go run github.com/go-task/task/v3/cmd/task@v3.54.0 generate-verify
 
   controllers:
     runs-on: ubuntu-latest
@@ -49,8 +47,7 @@ jobs:
           go-version-file: go.mod
       # test-envtest also installs the shipped CRDs on a real API server and checks
       # their admission rules, which plain go test skips without KUBEBUILDER_ASSETS.
-      - uses: https://github.com/go-task/setup-task@v2
-      - run: task test-envtest
+      - run: go run github.com/go-task/task/v3/cmd/task@v3.54.0 test-envtest
 
   # The chart had no CI at all until a release-scoping bug (#73) shipped in it.
   # These renders are cheap and catch the whole class of failure that reaches
