@@ -186,8 +186,7 @@ the [reference](docs/reference.md).
 
 ## Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and the
-[Code of Conduct](CODE_OF_CONDUCT.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Security
 
