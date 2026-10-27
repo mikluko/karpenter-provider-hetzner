@@ -1334,3 +1334,97 @@ func TestGetInstanceTypes_AppliesNodeClassKubelet(t *testing.T) {
 		t.Errorf("cpu reserved %dm, want the declared 400m", got)
 	}
 }
+
+func TestCreate_StampsNodeClassHash(t *testing.T) {
+	nc := baselineNodeClass()
+	cp, _, _ := buildCPWithTypes(t, nc, []*hcloud.ServerType{cx22Type()})
+	out, err := cp.Create(context.Background(), createNodeClaim())
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if got := out.Annotations[apiv1.AnnotationHCloudNodeClassHash]; got != nc.Hash() {
+		t.Errorf("hash annotation = %q, want %q", got, nc.Hash())
+	}
+	if got := out.Annotations[apiv1.AnnotationHCloudNodeClassHashVersion]; got != apiv1.HCloudNodeClassHashVersion {
+		t.Errorf("hash version annotation = %q, want %q", got, apiv1.HCloudNodeClassHashVersion)
+	}
+}
+
+// stampedDriftCase builds a NodeClaim stamped with the hash of the baseline
+// node class at hashVersion, and a provider serving the baseline after edit.
+func stampedDriftCase(t *testing.T, hashVersion string, edit func(*apiv1.HCloudNodeClassSpec)) (*cloudprovider.CloudProvider, *karpv1.NodeClaim) {
+	t.Helper()
+	launched := baselineNodeClass()
+	current := baselineNodeClass()
+	edit(&current.Spec)
+	cp, nodeClaim := buildCP(t, current, baselineServer())
+	nodeClaim.Annotations = map[string]string{
+		apiv1.AnnotationHCloudNodeClassHash:        launched.Hash(),
+		apiv1.AnnotationHCloudNodeClassHashVersion: hashVersion,
+	}
+	return cp, nodeClaim
+}
+
+func TestIsDrifted_NodeClass(t *testing.T) {
+	tests := []struct {
+		name        string
+		hashVersion string
+		edit        func(*apiv1.HCloudNodeClassSpec)
+		want        karpcp.DriftReason
+	}{
+		{
+			name:        "bootstrap edited",
+			hashVersion: apiv1.HCloudNodeClassHashVersion,
+			edit: func(s *apiv1.HCloudNodeClassSpec) {
+				s.Bootstrap.BeforeJoin = &apiv1.UserDataPart{Inline: "#!/bin/sh\nsysctl -w a=1\n"}
+			},
+			want: cloudprovider.DriftNodeClass,
+		},
+		{
+			name:        "imageSelector edited",
+			hashVersion: apiv1.HCloudNodeClassHashVersion,
+			edit:        func(s *apiv1.HCloudNodeClassSpec) { s.ImageSelector.Version = "14" },
+			want:        cloudprovider.DriftNodeClass,
+		},
+		{
+			name:        "unhashed field edited",
+			hashVersion: apiv1.HCloudNodeClassHashVersion,
+			edit:        func(s *apiv1.HCloudNodeClassSpec) { s.Locations = append(s.Locations, "fsn1") },
+		},
+		{
+			name:        "unchanged",
+			hashVersion: apiv1.HCloudNodeClassHashVersion,
+			edit:        func(*apiv1.HCloudNodeClassSpec) {},
+		},
+		{
+			name:        "stamped under another hash version",
+			hashVersion: "v0",
+			edit:        func(s *apiv1.HCloudNodeClassSpec) { s.Bootstrap.K0sVersion = "v1.34.2+k0s.0" },
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cp, nodeClaim := stampedDriftCase(t, tt.hashVersion, tt.edit)
+			reason, err := cp.IsDrifted(context.Background(), nodeClaim)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if reason != tt.want {
+				t.Errorf("IsDrifted = %q, want %q", reason, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsDrifted_NodeClass_UnstampedNodeClaim(t *testing.T) {
+	nc := baselineNodeClass()
+	nc.Spec.Bootstrap.K0sVersion = "v1.34.2+k0s.0"
+	cp, nodeClaim := buildCP(t, nc, baselineServer())
+	reason, err := cp.IsDrifted(context.Background(), nodeClaim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reason != "" {
+		t.Errorf("IsDrifted = %q, want no drift for a NodeClaim without a hash", reason)
+	}
+}

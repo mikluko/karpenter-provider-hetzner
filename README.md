@@ -30,8 +30,9 @@ SBOM. Pin a released version in production.
 - Cheapest-first selection, priced from Hetzner's net hourly price.
 - Capacity awareness: an offering Hetzner reports as unavailable in a location
   is skipped for a few minutes, and Karpenter falls back to another.
-- Drift detection on image, network, firewall, and server type, which replaces
-  the node.
+- Drift detection on image, network, firewall, server type, location and labels,
+  and on any node class edit to the bootstrap, image selector, SSH keys, public
+  IPs or placement group strategy, which replaces the node.
 - Debian images, Hetzner's own or your labelled snapshots, resolved per architecture.
 - Placement groups that spread nodes across physical hosts.
 - Optional public IPv4 and IPv6, for clusters on a private network.

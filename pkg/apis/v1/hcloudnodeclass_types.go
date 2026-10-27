@@ -31,7 +31,7 @@ type HCloudNodeClass struct {
 // +kubebuilder:validation:XValidation:message="a node class without networkID needs enablePublicIPv4 or enablePublicIPv6",rule="has(self.networkID) || !has(self.enablePublicIPv4) || self.enablePublicIPv4 || !has(self.enablePublicIPv6) || self.enablePublicIPv6"
 type HCloudNodeClassSpec struct {
 	// +kubebuilder:validation:MinItems=1
-	Locations []string `json:"locations"`
+	Locations []string `json:"locations" hash:"ignore"`
 
 	ImageSelector ImageSelector `json:"imageSelector"`
 
@@ -39,10 +39,10 @@ type HCloudNodeClassSpec struct {
 	// servers have only their public addresses.
 	// +kubebuilder:validation:Minimum=1
 	// +optional
-	NetworkID int64 `json:"networkID,omitempty"`
+	NetworkID int64 `json:"networkID,omitempty" hash:"ignore"`
 
 	// +optional
-	FirewallIDs []int64 `json:"firewallIDs,omitempty"`
+	FirewallIDs []int64 `json:"firewallIDs,omitempty" hash:"ignore"`
 
 	// +optional
 	SSHKeyIDs []int64 `json:"sshKeyIDs,omitempty"`
@@ -53,7 +53,7 @@ type HCloudNodeClassSpec struct {
 	PlacementGroupStrategy string `json:"placementGroupStrategy,omitempty"`
 
 	// +optional
-	Labels map[string]string `json:"labels,omitempty"`
+	Labels map[string]string `json:"labels,omitempty" hash:"ignore"`
 
 	// Bootstrap is how a server joins the cluster.
 	Bootstrap Bootstrap `json:"bootstrap"`
@@ -83,7 +83,7 @@ type HCloudNodeClassSpec struct {
 	//
 	// When omitted, a flat 100m CPU / 100Mi memory kubeReserved is assumed.
 	// +optional
-	Kubelet *KubeletConfiguration `json:"kubelet,omitempty"`
+	Kubelet *KubeletConfiguration `json:"kubelet,omitempty" hash:"ignore"`
 }
 
 // KubeletConfiguration mirrors the subset of kubelet settings that change how

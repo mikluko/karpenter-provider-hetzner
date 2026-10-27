@@ -40,6 +40,7 @@ const (
 	DriftServerType karpcp.DriftReason = "ServerTypeDrift"
 	DriftLocation   karpcp.DriftReason = "LocationDrift"
 	DriftLabels     karpcp.DriftReason = "LabelsDrift"
+	DriftNodeClass  karpcp.DriftReason = "NodeClassDrift"
 )
 
 // CloudProvider implements the Karpenter CloudProvider interface for Hetzner Cloud.
@@ -342,6 +343,11 @@ func (cp *CloudProvider) Create(ctx context.Context, nodeClaim *karpv1.NodeClaim
 	// Build the hydrated NodeClaim.
 	created := nodeClaim.DeepCopy()
 	created.Labels = labels
+	if created.Annotations == nil {
+		created.Annotations = map[string]string{}
+	}
+	created.Annotations[apiv1.AnnotationHCloudNodeClassHash] = nodeClass.Hash()
+	created.Annotations[apiv1.AnnotationHCloudNodeClassHashVersion] = apiv1.HCloudNodeClassHashVersion
 	created.Status.ProviderID = instance.FormatProviderID(server.ID)
 	created.Status.Capacity = selected.Capacity
 	created.Status.Allocatable = selected.Allocatable()
@@ -526,11 +532,23 @@ func (cp *CloudProvider) IsDrifted(ctx context.Context, nodeClaim *karpv1.NodeCl
 		}
 	}
 
-	// SSH-key and user-data drift are intentionally not checked: Hetzner does not
-	// reliably expose applied SSH keys or user-data after create, so a comparison
-	// would produce false positives. They are omitted rather than faked.
+	if nodeClassHashDrifted(nodeClaim, nodeClass) {
+		return logDrift(DriftNodeClass, nodeClaim.Status.ProviderID), nil
+	}
 
 	return "", nil
+}
+
+// nodeClassHashDrifted reports whether the node class has changed since the
+// NodeClaim was launched in a field the server cannot be checked against. A
+// NodeClaim stamped under another hash version, or not at all, never drifts
+// here: comparing hashes computed by different rules would drift every node.
+func nodeClassHashDrifted(nodeClaim *karpv1.NodeClaim, nodeClass *apiv1.HCloudNodeClass) bool {
+	if nodeClaim.Annotations[apiv1.AnnotationHCloudNodeClassHashVersion] != apiv1.HCloudNodeClassHashVersion {
+		return false
+	}
+	hash, ok := nodeClaim.Annotations[apiv1.AnnotationHCloudNodeClassHash]
+	return ok && hash != nodeClass.Hash()
 }
 
 // resolveNodeClass fetches the HCloudNodeClass referenced by ref.

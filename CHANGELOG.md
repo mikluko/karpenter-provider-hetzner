@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-27
+
 ### Changed
 
 - **Breaking:** the project moved to `forge.sarak.sh/mikluko/karpenter-provider-hetzner`. The image is published to `sarak.sh/mikluko/karpenter-provider-hetzner` and the chart to `oci://sarak.sh/mikluko/charts/karpenter-provider-hetzner`; `helm upgrade` has to name the new chart URL. Releases up to 0.7.1 stay at `ghcr.io/mikluko`, and nothing newer is published there.
@@ -15,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Images and charts are no longer signed with cosign.
+
+### Fixed
+
+- Editing a node class's `bootstrap`, `imageSelector`, `sshKeyIDs`, `enablePublicIPv4`, `enablePublicIPv6` or `placementGroupStrategy` now drifts its nodes with reason `NodeClassDrift`. Each NodeClaim carries the `karpenter.hetzner.cloud/hcloudnodeclass-hash` of the node class it was launched from. NodeClaims launched before this release are stamped with the node class as it stands at upgrade, so only later edits drift them.
 
 ## [0.7.1] - 2026-10-22
 
@@ -103,7 +109,8 @@ history is in the [upstream changelog](https://github.com/mikluko/karpenter-prov
 - **Breaking:** the `talos` and `ubuntu` image families; `debian` is the only one.
 - The chart's Artifact Hub annotations.
 
-[Unreleased]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.7.1...HEAD
+[Unreleased]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0...HEAD
+[0.8.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.7.1...v0.8.0
 [0.7.1]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.7.0...v0.7.1
 [0.7.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.6.0...v0.7.0
 [0.6.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.5.0...v0.6.0

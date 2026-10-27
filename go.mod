@@ -5,6 +5,7 @@ go 1.27.3
 require (
 	github.com/awslabs/operatorpkg v0.0.0-20261006163503-855c7d06c363
 	github.com/hetznercloud/hcloud-go/v2 v2.52.0
+	github.com/mitchellh/hashstructure/v2 v2.0.2
 	github.com/prometheus/client_golang v1.25.0
 	k8s.io/api v0.37.1
 	k8s.io/apiextensions-apiserver v0.37.1
@@ -48,7 +49,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect

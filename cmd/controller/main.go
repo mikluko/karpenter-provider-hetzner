@@ -20,6 +20,7 @@ import (
 
 	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/bootstrap"
 	hetznercp "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/cloudprovider"
+	nodeclasshash "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/controllers/nodeclaim/hash"
 	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/controllers/nodeclass"
 	hetznerop "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/operator"
 	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
@@ -98,5 +99,6 @@ func main() {
 			op.PredictionStore,
 		),
 		nodeClassController,
+		nodeclasshash.NewController(op.GetClient()),
 	)...).Start(ctx)
 }
