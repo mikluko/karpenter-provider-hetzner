@@ -35,7 +35,7 @@ jobs:
           # A PR is scanned against the newest toolchain so stdlib advisories
           # already fixed upstream cannot fail a contributor's branch.
           go-version: stable
-      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+      - run: go tool -modfile=tools/go.mod govulncheck ./...
 
   # Pinned to the shipped toolchain. Runs on main and on the weekly schedule --
   # not on pull requests, where a stale base is the contributor's problem to
@@ -49,4 +49,4 @@ jobs:
       - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+      - run: go tool -modfile=tools/go.mod govulncheck ./...
