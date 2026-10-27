@@ -7,9 +7,6 @@ on:
   schedule:
     - cron: "0 6 * * 1"
 
-permissions:
-  contents: read
-
 jobs:
   # Two scans, because "is this vulnerable?" has two different answers depending
   # on who is asking.
