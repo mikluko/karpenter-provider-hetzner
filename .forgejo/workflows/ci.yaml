@@ -13,6 +13,14 @@ jobs:
       - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: false
+      - uses: https://github.com/actions/cache@v6
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-test-${{ hashFiles('go.sum', 'tools/go.sum') }}
+          restore-keys: go-test-
       - run: go tool -modfile=tools/go.mod task test
 
   lint:
@@ -33,6 +41,14 @@ jobs:
       - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: false
+      - uses: https://github.com/actions/cache@v6
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-generate-${{ hashFiles('go.sum', 'tools/go.sum') }}
+          restore-keys: go-generate-
       - run: go tool -modfile=tools/go.mod task generate-verify
 
   controllers:
@@ -42,6 +58,14 @@ jobs:
       - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: false
+      - uses: https://github.com/actions/cache@v6
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-controllers-${{ hashFiles('go.sum', 'tools/go.sum') }}
+          restore-keys: go-controllers-
       # test-envtest also installs the shipped CRDs on a real API server and checks
       # their admission rules, which plain go test skips without KUBEBUILDER_ASSETS.
       - run: go tool -modfile=tools/go.mod task test-envtest
