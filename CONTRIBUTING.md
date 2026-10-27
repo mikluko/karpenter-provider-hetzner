@@ -44,8 +44,8 @@ on the date you wrote.
 
 On a push to `main`, `release-cut.yaml` runs CI, then tags the commit `vX.Y.Z`
 when the newest entry names a version no tag carries. The tag starts
-`release-roll.yaml`, which builds, signs, and publishes the image and the chart,
-and creates the GitHub release last. A tag whose `release-roll.yaml` run failed
+`release-roll.yaml`, which builds and publishes the image and the chart, and
+creates the forge release last. A tag whose `release-roll.yaml` run failed
 is not cut again: re-run that run. Run by hand, `release-roll.yaml` builds the
 newest version without publishing it.
 

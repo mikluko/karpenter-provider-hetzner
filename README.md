@@ -1,7 +1,6 @@
 # karpenter-provider-hetzner (fork)
 
-[![CI](https://github.com/mikluko/karpenter-provider-hetzner/actions/workflows/ci.yaml/badge.svg)](https://github.com/mikluko/karpenter-provider-hetzner/actions/workflows/ci.yaml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/mikluko/karpenter-provider-hetzner)](https://goreportcard.com/report/github.com/mikluko/karpenter-provider-hetzner)
+[![CI](https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/badges/workflows/release-cut.yaml/badge.svg)](https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/actions?workflow=release-cut.yaml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 A [Karpenter](https://karpenter.sh) cloud provider for
@@ -72,7 +71,7 @@ To install:
 
    ```bash
    helm install karpenter-provider-hetzner \
-     oci://ghcr.io/mikluko/charts/karpenter-provider-hetzner \
+     oci://sarak.sh/mikluko/charts/karpenter-provider-hetzner \
      --namespace kube-system \
      --set clusterName=<cluster-name> \
      --set apiServerURL=https://<api-server-address>:6443 \
@@ -93,7 +92,7 @@ say the CRDs changed, apply them before upgrading the chart:
 1. Apply the CRDs of the release, with `<version>` naming it, for example `v0.1.0`:
 
    ```bash
-   BASE=https://raw.githubusercontent.com/mikluko/karpenter-provider-hetzner/<version>/charts/karpenter-provider-hetzner/crds
+   BASE=https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/raw/tag/<version>/charts/karpenter-provider-hetzner/crds
    kubectl apply --server-side --force-conflicts \
      -f $BASE/karpenter.hetzner.cloud_hcloudnodeclasses.yaml \
      -f $BASE/karpenter.sh_nodeclaims.yaml \
@@ -107,7 +106,7 @@ say the CRDs changed, apply them before upgrading the chart:
 
    ```bash
    helm upgrade karpenter-provider-hetzner \
-     oci://ghcr.io/mikluko/charts/karpenter-provider-hetzner \
+     oci://sarak.sh/mikluko/charts/karpenter-provider-hetzner \
      --namespace kube-system --version <chart-version> --reuse-values
    ```
 

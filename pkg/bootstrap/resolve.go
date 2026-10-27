@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	apiv1 "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
 )
 
 // ErrKeyMissing reports a Secret that exists without the referenced key, or

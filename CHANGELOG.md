@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** the project moved to `forge.sarak.sh/mikluko/karpenter-provider-hetzner`. The image is published to `sarak.sh/mikluko/karpenter-provider-hetzner` and the chart to `oci://sarak.sh/mikluko/charts/karpenter-provider-hetzner`; `helm upgrade` has to name the new chart URL. Releases up to 0.7.1 stay at `ghcr.io/mikluko`, and nothing newer is published there.
+- **Breaking:** the Go module path is `sarak.sh/mikluko/karpenter-provider-hetzner`.
+
+### Removed
+
+- Images and charts are no longer signed with cosign.
+
 ## [0.7.1] - 2026-10-22
 
 ### Security
@@ -75,7 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-10-15
 
 The first release, taken from upstream karpenter-provider-hetzner 3.0.1. Its
-history is in the [upstream changelog](https://github.com/mikluko/karpenter-provider-hetzner/blob/main/CHANGELOG.upstream.md).
+history is in the [upstream changelog](CHANGELOG.upstream.md).
 
 ### Added
 
@@ -94,12 +103,12 @@ history is in the [upstream changelog](https://github.com/mikluko/karpenter-prov
 - **Breaking:** the `talos` and `ubuntu` image families; `debian` is the only one.
 - The chart's Artifact Hub annotations.
 
-[Unreleased]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.7.1...HEAD
-[0.7.1]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.7.0...v0.7.1
-[0.7.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/mikluko/karpenter-provider-hetzner/releases/tag/v0.1.0
+[Unreleased]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.7.1...HEAD
+[0.7.1]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.7.0...v0.7.1
+[0.7.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.6.0...v0.7.0
+[0.6.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.5.0...v0.6.0
+[0.5.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.4.0...v0.5.0
+[0.4.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.3.0...v0.4.0
+[0.3.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.2.0...v0.3.0
+[0.2.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.1.0...v0.2.0
+[0.1.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/releases/tag/v0.1.0

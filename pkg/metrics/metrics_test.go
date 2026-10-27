@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	crmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	"github.com/mikluko/karpenter-provider-hetzner/pkg/metrics"
+	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/metrics"
 )
 
 // findMetricFamily returns metric families by exact name from crmetrics.Registry.

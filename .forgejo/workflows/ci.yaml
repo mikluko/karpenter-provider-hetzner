@@ -12,44 +12,44 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: https://github.com/actions/checkout@v7
+      - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - uses: go-task/setup-task@v2
+      - uses: https://github.com/go-task/setup-task@v2
       - run: task test
 
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: https://github.com/actions/checkout@v7
+      - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - uses: golangci/golangci-lint-action@v9
+      - uses: https://github.com/golangci/golangci-lint-action@v9
         with:
           version: latest
 
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: https://github.com/actions/checkout@v7
+      - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - uses: go-task/setup-task@v2
+      - uses: https://github.com/go-task/setup-task@v2
       - run: task generate-verify
 
   controllers:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: https://github.com/actions/checkout@v7
+      - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
       # test-envtest also installs the shipped CRDs on a real API server and checks
       # their admission rules, which plain go test skips without KUBEBUILDER_ASSETS.
-      - uses: go-task/setup-task@v2
+      - uses: https://github.com/go-task/setup-task@v2
       - run: task test-envtest
 
   # The chart had no CI at all until a release-scoping bug (#73) shipped in it.
@@ -60,8 +60,10 @@ jobs:
   chart:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: azure/setup-helm@v5
+      - uses: https://github.com/actions/checkout@v7
+      - uses: https://github.com/azure/setup-helm@v5
+        with:
+          version: v4.3.1
       - run: helm lint charts/karpenter-provider-hetzner --set clusterName=ci --set apiServerURL=https://10.0.0.2:6443
       - name: Render the documented install
         run: |
@@ -108,8 +110,8 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: https://github.com/actions/checkout@v7
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: mikluko/action-changelog@v1
+      - uses: https://forge.sarak.sh/actions/changelog@v1

@@ -16,8 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
-	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
+	apiv1 "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
 )
 
 type fakeNetworks struct{ net *hcloud.Network }

@@ -14,7 +14,7 @@ import (
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 	karpcp "sigs.k8s.io/karpenter/pkg/cloudprovider"
 
-	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	apiv1 "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
 )
 
 // mockActionWaiter is a fake ActionWaiter for testing.

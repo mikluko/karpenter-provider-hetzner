@@ -1,4 +1,4 @@
-module github.com/mikluko/karpenter-provider-hetzner
+module sarak.sh/mikluko/karpenter-provider-hetzner
 
 go 1.27.3
 

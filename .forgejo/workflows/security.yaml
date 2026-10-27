@@ -32,8 +32,8 @@ jobs:
     name: govulncheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: https://github.com/actions/checkout@v7
+      - uses: https://github.com/actions/setup-go@v7
         with:
           # A PR is scanned against the newest toolchain so stdlib advisories
           # already fixed upstream cannot fail a contributor's branch.
@@ -48,8 +48,8 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: https://github.com/actions/checkout@v7
+      - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
       - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...

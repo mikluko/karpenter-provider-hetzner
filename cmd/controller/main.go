@@ -16,15 +16,15 @@ import (
 	"sigs.k8s.io/karpenter/pkg/operator"
 
 	// Register our HCloudNodeClass v1 types.
-	_ "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	_ "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
 
-	"github.com/mikluko/karpenter-provider-hetzner/pkg/bootstrap"
-	hetznercp "github.com/mikluko/karpenter-provider-hetzner/pkg/cloudprovider"
-	"github.com/mikluko/karpenter-provider-hetzner/pkg/controllers/nodeclass"
-	hetznerop "github.com/mikluko/karpenter-provider-hetzner/pkg/operator"
-	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
-	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/instance"
-	"github.com/mikluko/karpenter-provider-hetzner/pkg/providers/instancetype"
+	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/bootstrap"
+	hetznercp "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/cloudprovider"
+	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/controllers/nodeclass"
+	hetznerop "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/operator"
+	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
+	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/providers/instance"
+	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/providers/instancetype"
 )
 
 func main() {
