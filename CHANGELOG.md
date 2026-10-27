@@ -84,7 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-10-15
 
 The first release, taken from upstream karpenter-provider-hetzner 3.0.1. Its
-history is in the [upstream changelog](CHANGELOG.upstream.md).
+history is in the [upstream changelog](https://github.com/mikluko/karpenter-provider-hetzner/blob/main/CHANGELOG.upstream.md).
 
 ### Added
 
