@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-31
+
+### Changed
+
+- Dependencies updated: sigs.k8s.io/controller-tools v0.23.0.
+
 ## [0.7.1] - 2026-10-22
 
 ### Security
@@ -94,7 +100,8 @@ history is in the [upstream changelog](https://github.com/mikluko/karpenter-prov
 - **Breaking:** the `talos` and `ubuntu` image families; `debian` is the only one.
 - The chart's Artifact Hub annotations.
 
-[Unreleased]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/mikluko/karpenter-provider-hetzner/compare/v0.5.0...v0.6.0
