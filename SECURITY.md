@@ -8,7 +8,7 @@ This project is pre-1.0 and under active development. Security fixes are applied
 
 **Do not open a public issue for security vulnerabilities.**
 
-Please report privately using GitHub's [private vulnerability reporting](https://github.com/mikluko/karpenter-provider-hetzner/security/advisories/new) ("Report a vulnerability" on the Security tab) with:
+Please report privately by email to [security@sarak.sh](mailto:security@sarak.sh) with:
 
 - a description of the issue and its impact,
 - steps to reproduce or a proof of concept,

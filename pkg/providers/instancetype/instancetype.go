@@ -19,8 +19,8 @@ import (
 	"sigs.k8s.io/karpenter/pkg/cloudprovider"
 	"sigs.k8s.io/karpenter/pkg/scheduling"
 
-	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
-	"github.com/mikluko/karpenter-provider-hetzner/pkg/metrics"
+	apiv1 "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/metrics"
 )
 
 const cacheTTL = 6 * time.Hour

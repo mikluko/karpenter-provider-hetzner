@@ -21,7 +21,7 @@ import (
 	karpapis "sigs.k8s.io/karpenter/pkg/apis"
 	karpv1 "sigs.k8s.io/karpenter/pkg/apis/v1"
 
-	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	apiv1 "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
 )
 
 // LabelNodeClaim marks a bootstrap token Secret with the NodeClaim it was minted for.

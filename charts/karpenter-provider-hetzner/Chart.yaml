@@ -4,9 +4,9 @@ description: Karpenter cloud provider for Hetzner Cloud
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
-home: https://github.com/mikluko/karpenter-provider-hetzner
+home: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner
 sources:
-  - https://github.com/mikluko/karpenter-provider-hetzner
+  - https://forge.sarak.sh/mikluko/karpenter-provider-hetzner
 keywords:
   - karpenter
   - hetzner
@@ -14,4 +14,4 @@ keywords:
   - node-provisioning
 maintainers:
   - name: mikluko
-    url: https://github.com/mikluko
+    url: https://forge.sarak.sh/mikluko

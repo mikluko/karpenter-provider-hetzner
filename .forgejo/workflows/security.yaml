@@ -7,9 +7,6 @@ on:
   schedule:
     - cron: "0 6 * * 1"
 
-permissions:
-  contents: read
-
 jobs:
   # Two scans, because "is this vulnerable?" has two different answers depending
   # on who is asking.
@@ -32,13 +29,21 @@ jobs:
     name: govulncheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: https://github.com/actions/checkout@v7
+      - uses: https://github.com/actions/setup-go@v7
         with:
           # A PR is scanned against the newest toolchain so stdlib advisories
           # already fixed upstream cannot fail a contributor's branch.
           go-version: stable
-      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+          cache: false
+      - uses: https://github.com/actions/cache@v6
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-govulncheck-stable-${{ hashFiles('go.sum', 'tools/go.sum') }}
+          restore-keys: go-govulncheck-stable-
+      - run: go tool -modfile=tools/go.mod govulncheck ./...
 
   # Pinned to the shipped toolchain. Runs on main and on the weekly schedule --
   # not on pull requests, where a stale base is the contributor's problem to
@@ -48,8 +53,16 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: https://github.com/actions/checkout@v7
+      - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+          cache: false
+      - uses: https://github.com/actions/cache@v6
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-govulncheck-shipped-${{ hashFiles('go.sum', 'tools/go.sum') }}
+          restore-keys: go-govulncheck-shipped-
+      - run: go tool -modfile=tools/go.mod govulncheck ./...

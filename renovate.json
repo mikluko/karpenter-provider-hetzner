@@ -13,14 +13,5 @@
       "matchPackageNames": ["k8s.io/**", "sigs.k8s.io/**"],
       "groupName": "kubernetes"
     }
-  ],
-  "customManagers": [
-    {
-      "customType": "regex",
-      "description": "controller-gen, which the Taskfile runs at a version",
-      "managerFilePatterns": ["/^Taskfile\\.yaml$/"],
-      "matchStrings": ["go run (?<depName>sigs\\.k8s\\.io/controller-tools)/cmd/controller-gen@(?<currentValue>v\\S+)"],
-      "datasourceTemplate": "go"
-    }
   ]
 }

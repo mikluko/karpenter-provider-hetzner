@@ -15,8 +15,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	karpcp "sigs.k8s.io/karpenter/pkg/cloudprovider"
 
-	apiv1 "github.com/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
-	"github.com/mikluko/karpenter-provider-hetzner/pkg/metrics"
+	apiv1 "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/metrics"
 )
 
 // ServerClient is the narrow interface for the hcloud servers API needed by this provider.
