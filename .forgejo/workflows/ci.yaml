@@ -81,7 +81,7 @@ jobs:
       - uses: https://github.com/actions/checkout@v7
       - uses: https://github.com/azure/setup-helm@v5
         with:
-          version: v4.3.1
+          version: v4.3.2
       - run: helm lint charts/karpenter-provider-hetzner --set clusterName=ci --set apiServerURL=https://10.0.0.2:6443
       - name: Render the documented install
         run: |
