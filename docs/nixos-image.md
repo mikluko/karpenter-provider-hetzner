@@ -51,6 +51,41 @@ The flake sees only the files git tracks, so `git add` a new file under
 `image/` before a build. A build from uncommitted changes gives the snapshot a
 `rev` label ending in `-dirty`.
 
+## Build an image of your own
+
+A cluster that needs its own node configuration, such as sysctls, DNS or a
+registry mirror, keeps it in a flake of its own on top of this one. `lib.workers`
+returns the same `k0s_<minor>-<arch>` configurations with your modules added:
+
+```nix
+{
+  inputs.karpenter-hetzner.url = "git+https://sarak.sh/mikluko/karpenter-provider-hetzner?dir=image";
+
+  outputs =
+    { karpenter-hetzner, ... }:
+    {
+      nixosConfigurations = karpenter-hetzner.lib.workers {
+        modules = [ ./node.nix ];
+        upgradeFlake = "git+https://example.com/nodes.git";
+      };
+      inherit (karpenter-hetzner) packages;
+    };
+}
+```
+
+`packages` carries the nixos-anywhere that `task image` runs. Build from your
+flake with `-flake`:
+
+```bash
+task image K0S=1.36 -- -flake /path/to/nodes
+```
+
+With `upgradeFlake`, a node rebuilds itself from that flake on its first boot,
+before the join, and reboots into the result; the snapshot only has to be
+recent enough to boot. The node fetches the flake itself, so it has to be
+reachable from the node without credentials. A failed rebuild leaves the node
+as its image built it.
+
 ## Select the snapshot in a node class
 
 Every snapshot carries `role=k0s-worker` and `k0s-minor` among its labels; the

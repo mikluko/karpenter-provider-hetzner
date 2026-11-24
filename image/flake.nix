@@ -55,24 +55,68 @@
       ];
 
       worker =
-        arch: minor:
+        {
+          arch,
+          minor,
+          modules,
+          upgradeFlake,
+          name,
+        }:
         lib.nixosSystem {
           inherit (arches.${arch}) system;
-          modules = arches.${arch}.modules ++ [
-            disko.nixosModules.disko
-            k0s-nix.nixosModules.default
-            ./disk.nix
-            ./boot.nix
-            ./worker.nix
-            (
-              { pkgs, ... }:
-              {
-                nixpkgs.overlays = [ k0s-nix.overlays.default ];
-                services.k0s.package = pkgs."k0s_${minor}";
-              }
-            )
-          ];
+          modules =
+            arches.${arch}.modules
+            ++ [
+              disko.nixosModules.disko
+              k0s-nix.nixosModules.default
+              ./disk.nix
+              ./boot.nix
+              ./worker.nix
+              ./upgrade.nix
+              (
+                { pkgs, ... }:
+                {
+                  nixpkgs.overlays = [ k0s-nix.overlays.default ];
+                  services.k0s.package = pkgs."k0s_${minor}";
+                  karpenter.nodeUpgrade.flake = lib.mkIf (upgradeFlake != null) "${upgradeFlake}#${name}";
+                }
+              )
+            ]
+            ++ modules;
         };
+
+      # workers returns one worker configuration per architecture and k0s
+      # minor, named k0s_<minor>-<arch>, such as k0s_1_36-x86, each with
+      # modules added. With upgradeFlake, the flake that exposes these
+      # configurations, a node rebuilds itself from its own on first boot.
+      workers =
+        {
+          modules ? [ ],
+          upgradeFlake ? null,
+        }:
+        lib.listToAttrs (
+          lib.concatMap (
+            arch:
+            map (
+              minor:
+              let
+                name = "k0s_${minor}-${arch}";
+              in
+              {
+                inherit name;
+                value = worker {
+                  inherit
+                    arch
+                    minor
+                    modules
+                    upgradeFlake
+                    name
+                    ;
+                };
+              }
+            ) k0sMinors
+          ) (lib.attrNames arches)
+        );
 
       hosts = [
         "aarch64-darwin"
@@ -82,17 +126,9 @@
       ];
     in
     {
-      # One worker per architecture and k0s minor, named k0s_<minor>-<arch>,
-      # for example k0s_1_36-x86.
-      nixosConfigurations = lib.listToAttrs (
-        lib.concatMap (
-          arch:
-          map (minor: {
-            name = "k0s_${minor}-${arch}";
-            value = worker arch minor;
-          }) k0sMinors
-        ) (lib.attrNames arches)
-      );
+      lib = { inherit workers; };
+
+      nixosConfigurations = workers { };
 
       packages = lib.genAttrs hosts (system: {
         nixos-anywhere = nixos-anywhere.packages.${system}.default;
