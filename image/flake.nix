@@ -38,17 +38,11 @@
       arches = {
         x86 = {
           system = "x86_64-linux";
-          modules = [
-            srvos.nixosModules.hardware-hetzner-cloud
-            ./disk-bios.nix
-          ];
+          modules = [ srvos.nixosModules.hardware-hetzner-cloud ];
         };
         arm = {
           system = "aarch64-linux";
-          modules = [
-            srvos.nixosModules.hardware-hetzner-cloud-arm
-            ./disk-efi.nix
-          ];
+          modules = [ srvos.nixosModules.hardware-hetzner-cloud-arm ];
         };
       };
 
@@ -67,6 +61,8 @@
           modules = arches.${arch}.modules ++ [
             disko.nixosModules.disko
             k0s-nix.nixosModules.default
+            ./disk.nix
+            ./boot.nix
             ./worker.nix
             (
               { pkgs, ... }:
