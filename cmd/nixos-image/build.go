@@ -103,7 +103,9 @@ func snapshotLabels(cfg buildConfig, info imageInfo) map[string]string {
 		"role":      "k0s-worker",
 		"nixos":     info.NixOS,
 		"k0s-minor": cfg.K0sMinor,
-		"rev":       info.Rev,
+	}
+	if info.Rev != "" {
+		labels["rev"] = info.Rev
 	}
 	maps.Copy(labels, cfg.Labels)
 	return labels

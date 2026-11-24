@@ -84,6 +84,15 @@ flake with `-flake`:
 task image K0S=1.36 -- -flake /path/to/nodes
 ```
 
+Nix copies a flake in a git checkout into the store as the whole repository.
+Where the repository holds files you keep out of the store, such as git-crypt
+secrets, name the flake's directory as a `path:` flake instead, which copies that
+directory alone; its snapshots then carry no `rev` label:
+
+```bash
+task image K0S=1.36 -- -flake path:/path/to/repo/nix
+```
+
 With `upgradeFlake`, a node rebuilds itself from that flake on its first boot,
 before the join, and reboots into the result; the snapshot only has to be
 recent enough to boot. The node fetches the flake itself, so it has to be

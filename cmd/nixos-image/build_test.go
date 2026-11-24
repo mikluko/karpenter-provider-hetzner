@@ -338,15 +338,25 @@ func TestFlakeRevision(t *testing.T) {
 		meta string
 		want string
 	}{
-		"clean": {`{"revision":"abc","locked":{"rev":"abc"}}`, "abc"},
-		"dirty": {`{"dirtyRevision":"abc-dirty"}`, "abc-dirty"},
-		"none":  {`{"description":"x"}`, ""},
+		"clean":      {`{"revision":"abc","locked":{"rev":"abc"}}`, "abc"},
+		"dirty":      {`{"dirtyRevision":"abc-dirty"}`, "abc-dirty"},
+		"path flake": {`{"description":"x","locked":{"type":"path"}}`, ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			got, err := flakeRevision([]byte(tc.meta))
-			if (err != nil) != (tc.want == "") || got != tc.want {
+			if err != nil || got != tc.want {
 				t.Errorf("flakeRevision = %q, %v; want %q", got, err, tc.want)
 			}
 		})
+	}
+	if _, err := flakeRevision([]byte("not json")); err == nil {
+		t.Error("flakeRevision accepted output that is not JSON")
+	}
+}
+
+func TestSnapshotLabels_NoRevision(t *testing.T) {
+	labels := snapshotLabels(buildConfig{K0sMinor: "1.36"}, imageInfo{NixOS: "26.05"})
+	if _, ok := labels["rev"]; ok {
+		t.Errorf("labels = %v, want no rev for a flake outside git", labels)
 	}
 }

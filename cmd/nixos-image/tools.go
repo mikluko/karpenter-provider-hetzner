@@ -55,7 +55,8 @@ func (t localTools) Describe(ctx context.Context, flake, config string) (imageIn
 }
 
 // flakeRevision returns the git revision in nix flake metadata output, which
-// names it dirtyRevision, suffixed -dirty, for an uncommitted tree.
+// names it dirtyRevision, suffixed -dirty, for an uncommitted tree, or "" for
+// a flake that is not in git, such as a path: flake.
 func flakeRevision(meta []byte) (string, error) {
 	var m struct {
 		Revision      string `json:"revision"`
@@ -67,10 +68,7 @@ func flakeRevision(meta []byte) (string, error) {
 	if m.Revision != "" {
 		return m.Revision, nil
 	}
-	if m.DirtyRevision != "" {
-		return m.DirtyRevision, nil
-	}
-	return "", fmt.Errorf("flake metadata names no git revision")
+	return m.DirtyRevision, nil
 }
 
 func (t localTools) KeyPair(ctx context.Context, dir string) (string, string, error) {
