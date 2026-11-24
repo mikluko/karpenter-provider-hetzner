@@ -60,6 +60,13 @@ tasks:
           exit 1
         fi
 
+  image:
+    desc: Build a NixOS k0s worker snapshot in the HCLOUD_TOKEN project (ARCH=x86|arm K0S=1.36)
+    requires:
+      vars: [ARCH, K0S]
+    cmds:
+      - go run ./cmd/nixos-image -arch {{.ARCH}} -k0s {{.K0S}} {{.CLI_ARGS}}
+
   test-envtest:
     desc: Run the controller and API tests against a real API server
     cmds:
