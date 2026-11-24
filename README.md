@@ -169,6 +169,9 @@ covers the parts around the join and how to replace it.
 The [`examples/`](examples/) directory holds the node class and node pool from
 that guide, and a pair of node pools for amd64 and arm64.
 
+A `nixos` node class boots a snapshot of your own;
+[Build a NixOS worker image](docs/nixos-image.md) shows how to make one.
+
 Every field, status condition, node label, and controller setting is listed in
 the [reference](docs/reference.md).
 

@@ -36,7 +36,7 @@ func run() error {
 	arch := flag.String("arch", "", "architecture to build for: x86 or arm")
 	flag.StringVar(&cfg.K0sMinor, "k0s", "", "k0s minor version, such as 1.36")
 	flag.StringVar(&cfg.Location, "location", "nbg1", "location of the builder server")
-	flag.StringVar(&cfg.ServerType, "server-type", "", "builder server type; by default the cheapest of the smallest disk")
+	flag.StringVar(&cfg.ServerType, "server-type", "", "builder server type; by default the cheapest of the smallest disk with 2 GB of memory")
 	flag.StringVar(&cfg.Flake, "flake", "./image", "the image flake")
 	flag.BoolVar(&cfg.Keep, "keep", false, "keep the builder server when the build fails")
 	flag.Func("label", "snapshot label as key=value, repeatable; overrides a default", func(s string) error {
