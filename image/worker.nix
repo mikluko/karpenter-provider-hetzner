@@ -25,9 +25,16 @@
     settings.PasswordAuthentication = false;
   };
 
+  # sshd-keygen generates the host keys. cloud-init's ssh module would write
+  # the same files, and sshd-keygen fails when both run.
+  services.cloud-init.settings.ssh_genkeytypes = [ ];
+
   fileSystems."/".autoResize = true;
 
-  environment.systemPackages = [ pkgs.curl ];
+  environment.systemPackages = [
+    pkgs.curl
+    pkgs.cloud-init
+  ];
 
   documentation.enable = false;
 
