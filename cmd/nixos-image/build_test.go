@@ -294,6 +294,27 @@ func TestBuilderTypes(t *testing.T) {
 	}
 }
 
+func TestParseArches(t *testing.T) {
+	for name, tc := range map[string]struct {
+		in      string
+		want    []hcloud.Architecture
+		wantErr bool
+	}{
+		"both":       {"x86,arm", []hcloud.Architecture{hcloud.ArchitectureX86, hcloud.ArchitectureARM}, false},
+		"one":        {"arm", []hcloud.Architecture{hcloud.ArchitectureARM}, false},
+		"repeated":   {"arm, arm", []hcloud.Architecture{hcloud.ArchitectureARM}, false},
+		"unknown":    {"x86,riscv", nil, true},
+		"empty item": {"x86,", nil, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := parseArches(tc.in)
+			if (err != nil) != tc.wantErr || !slices.Equal(got, tc.want) {
+				t.Errorf("parseArches(%q) = %v, %v; want %v, error %v", tc.in, got, err, tc.want, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestKexecURL_Arm(t *testing.T) {
 	want := "https://github.com/nix-community/nixos-images/releases/download/nixos-26.05/nixos-kexec-installer-noninteractive-aarch64-linux.tar.gz"
 	if got := kexecURL(hcloud.ArchitectureARM, "26.05"); got != want {

@@ -4,9 +4,9 @@ This guide shows you how to build a NixOS k0s worker snapshot in your Hetzner
 Cloud project, and how to point a node class at it. Hetzner sells no NixOS
 image, so a `nixos` node class boots a snapshot of your own.
 
-`task image` builds one snapshot per architecture and k0s minor version. It
-creates a throwaway server, installs a worker configuration of the
-[`image`](../image) flake onto it with
+`task image` builds one snapshot per architecture for a k0s minor version, the
+architectures concurrently. For each, it creates a throwaway server, installs a
+worker configuration of the [`image`](../image) flake onto it with
 [nixos-anywhere](https://github.com/nix-community/nixos-anywhere), snapshots
 the server, and deletes it. The build runs on the server, so your machine needs
 no Linux builder. A build takes about six minutes.
@@ -22,24 +22,30 @@ no Linux builder. A build takes about six minutes.
 
 ## Build the snapshot
 
-1. From the repository root, build for each architecture your node pools use:
+1. From the repository root, build for x86 and Arm:
 
    ```bash
-   task image ARCH=x86 K0S=1.36
-   task image ARCH=arm K0S=1.36
+   task image K0S=1.36
    ```
 
-   Each run prints the snapshot ID last. The description reads similar to
+   To build one architecture, add `ARCH=x86` or `ARCH=arm`.
+
+   The run ends with one line per architecture, such as `arm 460469349`, the
+   snapshot ID. The description reads similar to
    `nixos-26.05 k0s-v1.36.6+k0s.0`.
 
 1. Optional: pass options after `--`. To build in another location, or to add a
    label of your own:
 
    ```bash
-   task image ARCH=arm K0S=1.36 -- -location fsn1 -label pool=general
+   task image K0S=1.36 -- -location fsn1 -label pool=general
    ```
 
    `go run ./cmd/nixos-image -h` lists every option.
+
+The terminal shows each build's progress, tagged with its architecture. The
+output of nix, nixos-anywhere and ssh goes to a log file per build, whose path
+the build prints first; `-v` streams it to the terminal too.
 
 The flake sees only the files git tracks, so `git add` a new file under
 `image/` before a build. A build from uncommitted changes gives the snapshot a
@@ -71,9 +77,10 @@ memory can boot it. `-server-type` picks the builder yourself.
 
 ## If a build fails
 
-The server and SSH key of a build are deleted when it fails or is interrupted.
-To debug an install, keep the server of a failed build with `-keep`, and delete
-it yourself afterwards:
+A failed build prints the last lines of its log, and the log's path. Its server
+and SSH key are deleted when it fails or is interrupted. To debug an install,
+keep the server of a failed build with `-keep`, and delete it yourself
+afterwards:
 
 ```bash
 task image ARCH=x86 K0S=1.36 -- -keep
