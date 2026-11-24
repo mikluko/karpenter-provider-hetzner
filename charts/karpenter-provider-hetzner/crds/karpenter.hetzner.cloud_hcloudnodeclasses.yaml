@@ -165,8 +165,12 @@ spec:
               imageSelector:
                 properties:
                   family:
+                    description: |-
+                      Family is debian, for Hetzner's Debian images or labelled snapshots of
+                      your own, or nixos, for labelled snapshots only.
                     enum:
                     - debian
+                    - nixos
                     type: string
                   selector:
                     additionalProperties:
@@ -181,6 +185,11 @@ spec:
                 required:
                 - family
                 type: object
+                x-kubernetes-validations:
+                - message: family nixos resolves to snapshots only, so selector is
+                    required
+                  rule: self.family != 'nixos' || (has(self.selector) && size(self.selector)
+                    > 0)
               kubelet:
                 description: |-
                   Kubelet declares the reservations this node class's bootstrap applies to

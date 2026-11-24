@@ -10,9 +10,9 @@ HCloudNodeClass spec fields:
 |-------|------|----------|---------|-------------|
 | `locations` | `[]string` | yes | None | Hetzner locations to create servers in. At least one. |
 | `networkID` | `int64` | no | None | ID of the private network every server attaches to. Without it, servers have only their public addresses, so `enablePublicIPv4` or `enablePublicIPv6` must stay `true`. |
-| `imageSelector.family` | `debian` | yes | None | OS image family. The only value. |
-| `imageSelector.version` | `string` | no | Newest Debian image | Substring matched against the image description, for example `13` for Debian 13. |
-| `imageSelector.selector` | `map[string]string` | no | None | hcloud labels an image must carry, all of them, for example `{"role": "k0s-worker"}`. Hetzner's Debian images carry no labels, so a selector picks the newest matching snapshot of your own. |
+| `imageSelector.family` | `debian` or `nixos` | yes | None | OS image family. `debian` boots Hetzner's Debian images or your snapshots; `nixos` boots your snapshots only, and requires `selector`. |
+| `imageSelector.version` | `string` | no | Newest matching image | Substring matched against the image description, for example `13` for Debian 13. |
+| `imageSelector.selector` | `map[string]string` | `nixos` only | None | hcloud labels an image must carry, all of them, for example `{"role": "k0s-worker"}`. Hetzner's Debian images carry no labels, so a selector picks the newest matching snapshot of your own. |
 | `firewallIDs` | `[]int64` | no | None | Firewalls attached to every server. |
 | `sshKeyIDs` | `[]int64` | no | None | SSH keys installed on every server. |
 | `placementGroupStrategy` | `spread` or `none` | no | `spread` | `spread` places servers in a spread placement group, on separate physical hosts. `none` uses no placement group. |

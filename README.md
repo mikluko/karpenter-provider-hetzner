@@ -32,7 +32,8 @@ SBOM. Pin a released version in production.
   is skipped for a few minutes, and Karpenter falls back to another.
 - Drift detection on image, network, firewall, and server type, which replaces
   the node.
-- Debian images, Hetzner's own or your labelled snapshots, resolved per architecture.
+- Debian images, Hetzner's own or your labelled snapshots, and labelled NixOS
+  snapshots, resolved per architecture.
 - Placement groups that spread nodes across physical hosts.
 - Optional public IPv4 and IPv6, for clusters on a private network.
 - Several clusters per Hetzner project: every server carries its cluster's name,

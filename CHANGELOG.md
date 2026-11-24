@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `imageSelector.family: nixos` boots the newest snapshot carrying the labels in `imageSelector.selector`, which a `nixos` node class requires.
+
 ### Changed
 
 - **Breaking:** the project moved to `forge.sarak.sh/mikluko/karpenter-provider-hetzner`. The image is published to `sarak.sh/mikluko/karpenter-provider-hetzner` and the chart to `oci://sarak.sh/mikluko/charts/karpenter-provider-hetzner`; `helm upgrade` has to name the new chart URL. Releases up to 0.7.1 stay at `ghcr.io/mikluko`, and nothing newer is published there.

@@ -188,6 +188,68 @@ func TestResolveDebian_NoSelectorIgnoresSnapshots(t *testing.T) {
 	}
 }
 
+func TestResolveNixOS_PicksNewestLabelledSnapshot(t *testing.T) {
+	fc := &mockImageClient{images: []*hcloud.Image{
+		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "nixos 26.05 old", baseTime),
+		makeImage(2, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "nixos 26.05 new", baseTime.Add(time.Hour)),
+		makeImage(3, hcloud.ImageTypeSnapshot, hcloud.ArchitectureARM, "nixos 26.05 arm", baseTime.Add(2*time.Hour)),
+		makeImage(4, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Debian 13", baseTime.Add(3*time.Hour)),
+	}}
+	p := NewProvider(fc)
+	sel := apiv1.ImageSelector{Family: "nixos", Selector: map[string]string{"role": "k0s-worker"}}
+	img, err := p.Resolve(context.Background(), sel, hcloud.ArchitectureX86)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if img.ID != 2 {
+		t.Errorf("expected newest x86 snapshot (ID=2), got ID=%d", img.ID)
+	}
+	if got := fc.lastOpts.LabelSelector; got != "role=k0s-worker" {
+		t.Errorf("label selector not forwarded: got %q", got)
+	}
+}
+
+func TestResolveNixOS_VersionPin(t *testing.T) {
+	p := NewProvider(&mockImageClient{images: []*hcloud.Image{
+		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureARM, "nixos 25.11", baseTime),
+		makeImage(2, hcloud.ImageTypeSnapshot, hcloud.ArchitectureARM, "nixos 26.05", baseTime.Add(time.Hour)),
+	}})
+	sel := apiv1.ImageSelector{Family: "nixos", Version: "25.11", Selector: map[string]string{"role": "k0s-worker"}}
+	img, err := p.Resolve(context.Background(), sel, hcloud.ArchitectureARM)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if img.ID != 1 {
+		t.Errorf("expected the 25.11 snapshot (ID=1), got ID=%d", img.ID)
+	}
+}
+
+// TestResolveNixOS_NeverPicksSystemImage pins that nixos resolves to snapshots
+// only: Hetzner sells no NixOS image, so a system image is always the wrong one.
+func TestResolveNixOS_NeverPicksSystemImage(t *testing.T) {
+	p := NewProvider(&mockImageClient{images: []*hcloud.Image{
+		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "NixOS 26.05", baseTime),
+	}})
+	sel := apiv1.ImageSelector{Family: "nixos", Selector: map[string]string{"role": "k0s-worker"}}
+	_, err := p.Resolve(context.Background(), sel, hcloud.ArchitectureX86)
+	if !IsPermanent(err) {
+		t.Fatalf("expected a permanent error, got %v", err)
+	}
+}
+
+func TestResolveNixOS_NoSelectorIsPermanent(t *testing.T) {
+	fc := &mockImageClient{images: []*hcloud.Image{
+		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "nixos 26.05", baseTime),
+	}}
+	_, err := NewProvider(fc).Resolve(context.Background(), apiv1.ImageSelector{Family: "nixos"}, hcloud.ArchitectureX86)
+	if !IsPermanent(err) {
+		t.Fatalf("expected a permanent error, got %v", err)
+	}
+	if fc.lastOpts.Type != nil {
+		t.Errorf("expected no image listing without a selector, got %+v", fc.lastOpts)
+	}
+}
+
 // erroringImages fails every list call, standing in for a 429/5xx from hcloud.
 type erroringImages struct{ err error }
 

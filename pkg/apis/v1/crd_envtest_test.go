@@ -170,3 +170,39 @@ func TestCRD_BootstrapAdmission(t *testing.T) {
 		})
 	}
 }
+
+// TestCRD_ImageSelectorAdmission checks that a nixos node class names the
+// snapshots it boots by label.
+func TestCRD_ImageSelectorAdmission(t *testing.T) {
+	c := startCRDClient(t)
+
+	n := 0
+	for name, tc := range map[string]struct {
+		imageSelector map[string]any
+		admit         bool
+	}{
+		"debian":                 {map[string]any{"family": "debian"}, true},
+		"nixos with selector":    {map[string]any{"family": "nixos", "selector": map[string]any{"role": "k0s-worker"}}, true},
+		"nixos without selector": {map[string]any{"family": "nixos"}, false},
+		"nixos, empty selector":  {map[string]any{"family": "nixos", "selector": map[string]any{}}, false},
+		"unknown family":         {map[string]any{"family": "ubuntu"}, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			n++
+			err := c.Create(context.Background(), &unstructured.Unstructured{Object: map[string]any{
+				"apiVersion": "karpenter.hetzner.cloud/v1",
+				"kind":       "HCloudNodeClass",
+				"metadata":   map[string]any{"name": fmt.Sprintf("image-%d", n)},
+				"spec": map[string]any{
+					"locations":     []any{"nbg1"},
+					"networkID":     int64(1),
+					"imageSelector": tc.imageSelector,
+					"bootstrap":     validBootstrap,
+				},
+			}})
+			if (err == nil) != tc.admit {
+				t.Errorf("admitted=%v, want %v (err: %v)", err == nil, tc.admit, err)
+			}
+		})
+	}
+}

@@ -186,8 +186,11 @@ func (b *Bootstrap) SecretRefs() []*SecretKeyReference {
 	return refs
 }
 
+// +kubebuilder:validation:XValidation:message="family nixos resolves to snapshots only, so selector is required",rule="self.family != 'nixos' || (has(self.selector) && size(self.selector) > 0)"
 type ImageSelector struct {
-	// +kubebuilder:validation:Enum=debian
+	// Family is debian, for Hetzner's Debian images or labelled snapshots of
+	// your own, or nixos, for labelled snapshots only.
+	// +kubebuilder:validation:Enum=debian;nixos
 	Family string `json:"family"`
 
 	// +optional

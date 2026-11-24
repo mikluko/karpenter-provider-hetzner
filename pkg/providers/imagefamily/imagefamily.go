@@ -74,7 +74,8 @@ func NewProvider(client ImageClient) *Provider {
 }
 
 // Resolve returns the best matching image for the given selector and architecture.
-// The only supported family is "debian".
+// The supported families are "debian" and "nixos". A nixos image is always a
+// snapshot, and resolving one without a label selector fails permanently.
 func (p *Provider) Resolve(ctx context.Context, selector apiv1.ImageSelector, arch hcloud.Architecture) (*hcloud.Image, error) {
 	log := logf.FromContext(ctx)
 	ls := labelSelectorString(selector.Selector)
@@ -83,8 +84,13 @@ func (p *Provider) Resolve(ctx context.Context, selector apiv1.ImageSelector, ar
 	switch strings.ToLower(selector.Family) {
 	case "debian":
 		img, err = p.resolveSystem(ctx, "debian", selector.Version, arch, ls)
+	case "nixos":
+		if ls == "" {
+			return nil, newPermanentError("image family nixos needs a label selector")
+		}
+		img, err = p.newestSnapshot(ctx, "nixos", selector.Version, arch, ls)
 	default:
-		return nil, newPermanentError("unsupported image family %q: must be debian", selector.Family)
+		return nil, newPermanentError("unsupported image family %q: must be debian or nixos", selector.Family)
 	}
 	if err != nil {
 		return nil, err
