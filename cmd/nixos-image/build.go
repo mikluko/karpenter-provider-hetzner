@@ -49,7 +49,9 @@ type tools interface {
 	// path and the public key in authorized_keys form.
 	KeyPair(ctx context.Context, dir string) (privateKey, publicKey string, err error)
 	WaitSSH(ctx context.Context, addr, privateKey string) error
-	Install(ctx context.Context, flake, config, addr, privateKey string) error
+	// Install kexecs the builder into the installer at kexecURL, then
+	// partitions it and installs config.
+	Install(ctx context.Context, flake, config, kexecURL, addr, privateKey string) error
 	// Unmount unmounts the installed system so the disk is safe to power off.
 	Unmount(ctx context.Context, addr, privateKey string) error
 }
@@ -74,6 +76,16 @@ type buildConfig struct {
 // workerConfig names the flake's nixosConfiguration for arch and minor.
 func workerConfig(arch hcloud.Architecture, minor string) string {
 	return "k0s_" + strings.ReplaceAll(minor, ".", "_") + "-" + string(arch)
+}
+
+// kexecURL returns the nixos-images installer of the release being installed,
+// in place of the older one nixos-anywhere pins.
+func kexecURL(arch hcloud.Architecture, release string) string {
+	system := "x86_64"
+	if arch == hcloud.ArchitectureARM {
+		system = "aarch64"
+	}
+	return fmt.Sprintf("https://github.com/nix-community/nixos-images/releases/download/nixos-%s/nixos-kexec-installer-noninteractive-%s-linux.tar.gz", release, system)
 }
 
 // snapshotDescription is matched by imageSelector.version, as a substring.
@@ -154,7 +166,7 @@ func (b *builder) build(ctx context.Context, cfg buildConfig) (_ *hcloud.Image, 
 	if err := b.tools.WaitSSH(ctx, addr, privateKey); err != nil {
 		return nil, fmt.Errorf("waiting for SSH on %s: %w", addr, err)
 	}
-	if err := b.tools.Install(ctx, cfg.Flake, config, addr, privateKey); err != nil {
+	if err := b.tools.Install(ctx, cfg.Flake, config, kexecURL(cfg.Arch, info.NixOS), addr, privateKey); err != nil {
 		return nil, fmt.Errorf("installing %s: %w", config, err)
 	}
 	if err := b.tools.Unmount(ctx, addr, privateKey); err != nil {

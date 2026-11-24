@@ -85,8 +85,9 @@ func (f *fakeCloud) DeleteServer(context.Context, *hcloud.Server) error {
 }
 
 type fakeTools struct {
-	calls  []string
-	failOn string
+	calls    []string
+	failOn   string
+	kexecURL string
 }
 
 func (f *fakeTools) call(name string) error {
@@ -107,7 +108,8 @@ func (f *fakeTools) KeyPair(_ context.Context, dir string) (string, string, erro
 
 func (f *fakeTools) WaitSSH(context.Context, string, string) error { return f.call("WaitSSH") }
 
-func (f *fakeTools) Install(context.Context, string, string, string, string) error {
+func (f *fakeTools) Install(_ context.Context, _, _, kexecURL, _, _ string) error {
+	f.kexecURL = kexecURL
 	return f.call("Install")
 }
 
@@ -157,6 +159,9 @@ func TestBuild_SnapshotsAndCleansUp(t *testing.T) {
 	wantTools := []string{"Describe", "KeyPair", "WaitSSH", "Install", "Unmount"}
 	if !slices.Equal(tl.calls, wantTools) {
 		t.Errorf("tool calls = %v, want %v", tl.calls, wantTools)
+	}
+	if got, want := tl.kexecURL, "https://github.com/nix-community/nixos-images/releases/download/nixos-26.05/nixos-kexec-installer-noninteractive-x86_64-linux.tar.gz"; got != want {
+		t.Errorf("kexec URL = %q, want %q", got, want)
 	}
 	if got, want := c.snapshot.description, "nixos-26.05 k0s-v1.36.6+k0s.0"; got != want {
 		t.Errorf("description = %q, want %q", got, want)
@@ -286,6 +291,13 @@ func TestBuilderTypes(t *testing.T) {
 	}
 	if want := []string{"cx23", "cpx22"}; !slices.Equal(got, want) {
 		t.Errorf("builderTypes = %v, want %v", got, want)
+	}
+}
+
+func TestKexecURL_Arm(t *testing.T) {
+	want := "https://github.com/nix-community/nixos-images/releases/download/nixos-26.05/nixos-kexec-installer-noninteractive-aarch64-linux.tar.gz"
+	if got := kexecURL(hcloud.ArchitectureARM, "26.05"); got != want {
+		t.Errorf("kexecURL = %q, want %q", got, want)
 	}
 }
 

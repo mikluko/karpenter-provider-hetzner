@@ -101,10 +101,11 @@ func (t localTools) WaitSSH(ctx context.Context, addr, privateKey string) error 
 	}
 }
 
-func (t localTools) Install(ctx context.Context, flake, config, addr, privateKey string) error {
+func (t localTools) Install(ctx context.Context, flake, config, kexecURL, addr, privateKey string) error {
 	args := []string{
 		"run", flake + "#nixos-anywhere", "--",
 		"--flake", flake + "#" + config,
+		"--kexec", kexecURL,
 		"--build-on", "remote",
 		"--phases", "kexec,disko,install",
 		"-i", privateKey,
