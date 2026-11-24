@@ -156,6 +156,9 @@ func (r runner) build(ctx context.Context, cfg buildConfig) (res result) {
 
 	b := &builder{cloud: r.cloud, tools: localTools{out: pw}, log: log, now: time.Now}
 	res.image, res.err = b.build(ctx, cfg)
+	if res.err != nil {
+		log.Error("build failed", "err", res.err)
+	}
 	return res
 }
 

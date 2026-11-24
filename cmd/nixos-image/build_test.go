@@ -25,6 +25,7 @@ type fakeCloud struct {
 	failCreate []error
 	failOn     string
 	created    []string
+	publicNet  *hcloud.ServerCreatePublicNet
 	snapshot   struct {
 		description string
 		labels      map[string]string
@@ -53,6 +54,7 @@ func (f *fakeCloud) DeleteSSHKey(context.Context, *hcloud.SSHKey) error {
 
 func (f *fakeCloud) CreateServer(_ context.Context, opts hcloud.ServerCreateOpts) (*hcloud.Server, error) {
 	f.created = append(f.created, opts.ServerType.Name)
+	f.publicNet = opts.PublicNet
 	if err := f.call("CreateServer"); err != nil {
 		return nil, err
 	}
@@ -155,6 +157,9 @@ func TestBuild_SnapshotsAndCleansUp(t *testing.T) {
 	wantCloud := []string{"ServerTypes", "CreateSSHKey", "CreateServer", "PowerOff", "Snapshot", "DeleteServer", "DeleteSSHKey"}
 	if !slices.Equal(c.calls, wantCloud) {
 		t.Errorf("cloud calls = %v, want %v", c.calls, wantCloud)
+	}
+	if n := c.publicNet; n == nil || !n.EnableIPv4 || n.EnableIPv6 {
+		t.Errorf("public net = %+v, want IPv4 only: one primary IP per builder", n)
 	}
 	wantTools := []string{"Describe", "KeyPair", "WaitSSH", "Install", "Unmount"}
 	if !slices.Equal(tl.calls, wantTools) {

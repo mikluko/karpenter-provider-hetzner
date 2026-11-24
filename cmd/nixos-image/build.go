@@ -25,6 +25,11 @@ const buildLabel = "nixos-image-build"
 // kexecs it into the NixOS installer.
 const builderImage = "debian-13"
 
+// builderNet gives a builder one primary IP, IPv4: each primary IP counts
+// against the project's limit, which the cluster's nodes share, and the
+// installer and k0s download from GitHub, which serves no IPv6.
+var builderNet = &hcloud.ServerCreatePublicNet{EnableIPv4: true}
+
 // cleanupTimeout bounds the deletes that run after the build, including after
 // the build's own context was cancelled.
 const cleanupTimeout = 2 * time.Minute
@@ -212,7 +217,7 @@ func (b *builder) createServer(ctx context.Context, cfg buildConfig, types []*hc
 			Location:   &hcloud.Location{Name: cfg.Location},
 			SSHKeys:    []*hcloud.SSHKey{key},
 			Labels:     labels,
-			PublicNet:  &hcloud.ServerCreatePublicNet{EnableIPv4: true, EnableIPv6: true},
+			PublicNet:  builderNet,
 		})
 		if err == nil {
 			return server, nil
