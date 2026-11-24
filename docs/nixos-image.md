@@ -73,6 +73,10 @@ returns the same `k0s_<minor>-<arch>` configurations with your modules added:
 }
 ```
 
+In your modules, `karpenter.k0s.extraArgs` adds arguments to `k0s worker`, such
+as `--profile=reserved`, and `karpenter.k0s.kubeletExtraArgs` adds kubelet
+arguments every node of the image gets, ahead of those the join passes.
+
 `packages` carries the nixos-anywhere that `task image` runs. Build from your
 flake with `-flake`:
 
