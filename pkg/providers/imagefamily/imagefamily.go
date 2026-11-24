@@ -82,13 +82,13 @@ func (p *Provider) Resolve(ctx context.Context, selector apiv1.ImageSelector, ar
 	var img *hcloud.Image
 	var err error
 	switch strings.ToLower(selector.Family) {
-	case "debian":
-		img, err = p.resolveSystem(ctx, "debian", selector.Version, arch, ls)
-	case "nixos":
+	case apiv1.FamilyDebian:
+		img, err = p.resolveSystem(ctx, apiv1.FamilyDebian, selector.Version, arch, ls)
+	case apiv1.FamilyNixOS:
 		if ls == "" {
 			return nil, newPermanentError("image family nixos needs a label selector")
 		}
-		img, err = p.newestSnapshot(ctx, "nixos", selector.Version, arch, ls)
+		img, err = p.newestSnapshot(ctx, apiv1.FamilyNixOS, selector.Version, arch, ls)
 	default:
 		return nil, newPermanentError("unsupported image family %q: must be debian or nixos", selector.Family)
 	}

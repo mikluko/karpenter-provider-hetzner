@@ -172,20 +172,26 @@ func TestCRD_BootstrapAdmission(t *testing.T) {
 }
 
 // TestCRD_ImageSelectorAdmission checks that a nixos node class names the
-// snapshots it boots by label.
+// snapshots it boots by label, and needs no k0s version and takes none.
 func TestCRD_ImageSelectorAdmission(t *testing.T) {
 	c := startCRDClient(t)
 
+	nixos := map[string]any{"family": "nixos", "selector": map[string]any{"role": "k0s-worker"}}
+	join := map[string]any{"join": map[string]any{"inline": "#!/bin/sh\n"}}
 	n := 0
 	for name, tc := range map[string]struct {
 		imageSelector map[string]any
+		bootstrap     map[string]any
 		admit         bool
 	}{
-		"debian":                 {map[string]any{"family": "debian"}, true},
-		"nixos with selector":    {map[string]any{"family": "nixos", "selector": map[string]any{"role": "k0s-worker"}}, true},
-		"nixos without selector": {map[string]any{"family": "nixos"}, false},
-		"nixos, empty selector":  {map[string]any{"family": "nixos", "selector": map[string]any{}}, false},
-		"unknown family":         {map[string]any{"family": "ubuntu"}, false},
+		"debian":                 {map[string]any{"family": "debian"}, validBootstrap, true},
+		"debian, no k0s version": {map[string]any{"family": "debian"}, map[string]any{}, false},
+		"nixos, generated join":  {nixos, map[string]any{}, true},
+		"nixos, replaced join":   {nixos, join, true},
+		"nixos with k0s version": {nixos, validBootstrap, false},
+		"nixos without selector": {map[string]any{"family": "nixos"}, map[string]any{}, false},
+		"nixos, empty selector":  {map[string]any{"family": "nixos", "selector": map[string]any{}}, map[string]any{}, false},
+		"unknown family":         {map[string]any{"family": "ubuntu"}, validBootstrap, false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			n++
@@ -197,7 +203,7 @@ func TestCRD_ImageSelectorAdmission(t *testing.T) {
 					"locations":     []any{"nbg1"},
 					"networkID":     int64(1),
 					"imageSelector": tc.imageSelector,
-					"bootstrap":     validBootstrap,
+					"bootstrap":     tc.bootstrap,
 				},
 			}})
 			if (err == nil) != tc.admit {

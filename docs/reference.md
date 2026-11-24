@@ -33,9 +33,9 @@ bootstrap fields:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `beforeJoin` | part | no | Runs before the join. |
-| `join` | part | no | Replaces the generated k0s join. |
+| `join` | part | no | Replaces the generated join. On a `debian` node class the generated join installs k0s `k0sVersion`; on a `nixos` node class it starts the k0s worker the image carries. |
 | `afterJoin` | part | no | Runs after the join. |
-| `k0sVersion` | `string` | unless `join` is set | k0s release tag the generated join installs, such as `v1.34.1+k0s.0`. |
+| `k0sVersion` | `string` | `debian`, unless `join` is set | k0s release tag the generated join installs, such as `v1.34.1+k0s.0`. A `nixos` node class refuses it: its k0s comes with the image. |
 
 A part is one cloud-init document, such as a shell script or a cloud-config,
 given exactly one way:

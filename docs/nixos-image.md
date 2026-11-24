@@ -64,7 +64,11 @@ imageSelector:
   selector:
     role: k0s-worker
     k0s-minor: "1.36"
+bootstrap: {}
 ```
+
+A `nixos` node class takes no `bootstrap.k0sVersion`: the generated join starts
+the k0s worker the image carries.
 
 The provider resolves the newest matching snapshot per architecture. To pin a
 k0s patch release, set `imageSelector.version` to a substring of the

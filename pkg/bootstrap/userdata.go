@@ -121,6 +121,25 @@ k0s start
 `, JoinEnvPath, k0sVersion), nil
 }
 
+// NixOSJoin is the generated join of a nixos node class. It starts the k0s
+// worker the image carries, handing it the token at /etc/k0s/join-token and
+// REGISTER_TAINTS and K0S_KUBELET_ARGS in /etc/karpenter-hetzner/k0s.env,
+// the tokenFile and EnvironmentFile of the image's k0s.service.
+// KUBELET_EXTRA_ARGS must not contain a double quote.
+const NixOSJoin = `#!/bin/sh
+set -eu
+. ` + JoinEnvPath + `
+server_id=$(curl -fsS http://169.254.169.254/hetzner/v1/metadata/instance-id)
+install -d -m 0700 /etc/k0s
+(umask 077 && printf '%s' "$JOIN_TOKEN" > /etc/k0s/join-token)
+umask 077
+cat > /etc/karpenter-hetzner/k0s.env <<EOF
+REGISTER_TAINTS=$REGISTER_TAINTS
+K0S_KUBELET_ARGS="--provider-id=hcloud://$server_id --hostname-override=$NODE_NAME ${KUBELET_EXTRA_ARGS:-}"
+EOF
+systemctl start k0s
+`
+
 // shellQuote quotes s as one POSIX shell word.
 func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"

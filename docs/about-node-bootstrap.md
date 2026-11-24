@@ -1,13 +1,14 @@
 # About node bootstrap
 
-Each server boots Debian with a cloud-init document this provider builds from the
-`bootstrap` of its `HCloudNodeClass`. The document has four parts, in order:
+Each server boots its image with a cloud-init document this provider builds from
+the `bootstrap` of its `HCloudNodeClass`. The document has four parts, in order:
 
 1. `join.env`, written by the provider: the node's join token and the values the
    join needs.
 1. `beforeJoin`, yours: a VPN, packages, kubelet arguments.
-1. The join. By default the provider generates one that installs k0s and starts
-   a worker. `join` replaces it.
+1. The join. By default the provider generates one. On a `debian` node class it
+   installs k0s and starts a worker; on a `nixos` node class it starts the k0s
+   worker the image carries. `join` replaces it.
 1. `afterJoin`, yours.
 
 [Join Debian nodes to a k0s cluster](debian-bootstrap.md) walks through a node
@@ -97,6 +98,17 @@ A missing taint does not fail. Karpenter core emits an `UnregisteredTaintMissing
 event on the NodeClaim and carries on, and the only symptom is a pod that
 occasionally lands on a node before its labels and taints arrive. That is a race,
 and it does not reproduce on demand.
+
+## The nixos join
+
+A `nixos` image carries k0s and a `k0s.service` that waits for a token, so the
+generated join installs nothing. It writes the token to `/etc/k0s/join-token`,
+writes `REGISTER_TAINTS` and `K0S_KUBELET_ARGS` to
+`/etc/karpenter-hetzner/k0s.env`, and starts `k0s.service`. The worker module of
+the [`image`](../image) flake reads both files; an image of your own that
+replaces it has to read them the same way. `KUBELET_EXTRA_ARGS` reaches the
+kubelet through `K0S_KUBELET_ARGS`, so on a `nixos` node class it must not
+contain a double quote.
 
 ## The zone label and the hcloud CCM
 

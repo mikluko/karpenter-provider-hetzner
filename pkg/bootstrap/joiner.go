@@ -41,6 +41,9 @@ func (j *Joiner) UserData(ctx context.Context, nc *apiv1.HCloudNodeClass, nodeCl
 	if err != nil {
 		return "", nil, err
 	}
+	if parts.Join == "" && nc.Spec.ImageSelector.Family == apiv1.FamilyNixOS {
+		parts.Join = NixOSJoin
+	}
 	token, secret, err := NewTokenSecret(nodeClaim, j.now(), TokenTTL)
 	if err != nil {
 		return "", nil, err

@@ -106,7 +106,10 @@ spec:
                     - message: exactly one of inline and secretRef is required
                       rule: has(self.inline) != has(self.secretRef)
                   join:
-                    description: Join replaces the generated k0s join.
+                    description: |-
+                      Join replaces the generated join. On a debian node class the generated
+                      join installs k0s K0sVersion; on a nixos node class it starts the k0s
+                      worker the image carries.
                     properties:
                       inline:
                         minLength: 1
@@ -135,15 +138,11 @@ spec:
                       rule: has(self.inline) != has(self.secretRef)
                   k0sVersion:
                     description: |-
-                      K0sVersion is the k0s release the generated join installs, such as
-                      v1.34.1+k0s.0. It should match the control plane's.
+                      K0sVersion is the k0s release the generated join installs on a debian
+                      node class, such as v1.34.1+k0s.0. It should match the control plane's.
                     pattern: ^v[0-9]+\.[0-9]+\.[0-9]+\+k0s\.[0-9]+$
                     type: string
                 type: object
-                x-kubernetes-validations:
-                - message: k0sVersion is required unless join replaces the generated
-                    join
-                  rule: has(self.join) || has(self.k0sVersion)
               enablePublicIPv4:
                 default: true
                 description: |-
@@ -295,6 +294,13 @@ spec:
             - message: a node class without networkID needs enablePublicIPv4 or enablePublicIPv6
               rule: has(self.networkID) || !has(self.enablePublicIPv4) || self.enablePublicIPv4
                 || !has(self.enablePublicIPv6) || self.enablePublicIPv6
+            - message: bootstrap.k0sVersion is required unless bootstrap.join replaces
+                the generated join
+              rule: self.imageSelector.family == 'nixos' || has(self.bootstrap.join)
+                || has(self.bootstrap.k0sVersion)
+            - message: bootstrap.k0sVersion does not apply to family nixos, whose
+                image carries k0s
+              rule: self.imageSelector.family != 'nixos' || !has(self.bootstrap.k0sVersion)
           status:
             properties:
               conditions:

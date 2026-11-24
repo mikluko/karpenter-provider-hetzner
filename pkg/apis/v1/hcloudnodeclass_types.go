@@ -29,6 +29,8 @@ type HCloudNodeClass struct {
 }
 
 // +kubebuilder:validation:XValidation:message="a node class without networkID needs enablePublicIPv4 or enablePublicIPv6",rule="has(self.networkID) || !has(self.enablePublicIPv4) || self.enablePublicIPv4 || !has(self.enablePublicIPv6) || self.enablePublicIPv6"
+// +kubebuilder:validation:XValidation:message="bootstrap.k0sVersion is required unless bootstrap.join replaces the generated join",rule="self.imageSelector.family == 'nixos' || has(self.bootstrap.join) || has(self.bootstrap.k0sVersion)"
+// +kubebuilder:validation:XValidation:message="bootstrap.k0sVersion does not apply to family nixos, whose image carries k0s",rule="self.imageSelector.family != 'nixos' || !has(self.bootstrap.k0sVersion)"
 type HCloudNodeClassSpec struct {
 	// +kubebuilder:validation:MinItems=1
 	Locations []string `json:"locations"`
@@ -132,13 +134,14 @@ type EvictionThreshold string
 // Bootstrap is the cloud-init a server boots with: the operator's before-join
 // part, the join, and the operator's after-join part, in that order. Every
 // part reads its inputs from /etc/karpenter-hetzner/join.env.
-// +kubebuilder:validation:XValidation:message="k0sVersion is required unless join replaces the generated join",rule="has(self.join) || has(self.k0sVersion)"
 type Bootstrap struct {
 	// BeforeJoin runs before the join, and may append KUBELET_EXTRA_ARGS to join.env.
 	// +optional
 	BeforeJoin *UserDataPart `json:"beforeJoin,omitempty"`
 
-	// Join replaces the generated k0s join.
+	// Join replaces the generated join. On a debian node class the generated
+	// join installs k0s K0sVersion; on a nixos node class it starts the k0s
+	// worker the image carries.
 	// +optional
 	Join *UserDataPart `json:"join,omitempty"`
 
@@ -146,8 +149,8 @@ type Bootstrap struct {
 	// +optional
 	AfterJoin *UserDataPart `json:"afterJoin,omitempty"`
 
-	// K0sVersion is the k0s release the generated join installs, such as
-	// v1.34.1+k0s.0. It should match the control plane's.
+	// K0sVersion is the k0s release the generated join installs on a debian
+	// node class, such as v1.34.1+k0s.0. It should match the control plane's.
 	// +kubebuilder:validation:Pattern=`^v[0-9]+\.[0-9]+\.[0-9]+\+k0s\.[0-9]+$`
 	// +optional
 	K0sVersion string `json:"k0sVersion,omitempty"`
@@ -185,6 +188,12 @@ func (b *Bootstrap) SecretRefs() []*SecretKeyReference {
 	}
 	return refs
 }
+
+// Image families an ImageSelector names.
+const (
+	FamilyDebian = "debian"
+	FamilyNixOS  = "nixos"
+)
 
 // +kubebuilder:validation:XValidation:message="family nixos resolves to snapshots only, so selector is required",rule="self.family != 'nixos' || (has(self.selector) && size(self.selector) > 0)"
 type ImageSelector struct {

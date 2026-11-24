@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `imageSelector.family: nixos` boots the newest snapshot carrying the labels in `imageSelector.selector`, which a `nixos` node class requires.
+- A `nixos` node class generates its own join, which starts the k0s worker its image carries, and refuses `bootstrap.k0sVersion`.
 - `task image` builds a NixOS k0s worker snapshot in a Hetzner Cloud project, for x86 or Arm and a k0s minor version. See [Build a NixOS worker image](docs/nixos-image.md).
 
 ### Changed
