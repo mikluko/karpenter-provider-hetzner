@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0-nixos.1] - 2026-11-24
+
 ### Added
 
 - `imageSelector.family: snapshot` boots snapshots of your own of any OS: the newest one carrying the labels in `imageSelector.selector`, or one per architecture from `imageSelector.ids`. A `snapshot` node class requires `bootstrap.join` and refuses `bootstrap.k0sVersion`.
@@ -107,7 +109,8 @@ history is in the [upstream changelog](https://github.com/mikluko/karpenter-prov
 - **Breaking:** the `talos` and `ubuntu` image families; `debian` is the only one.
 - The chart's Artifact Hub annotations.
 
-[Unreleased]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.7.1...HEAD
+[Unreleased]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0-nixos.1...HEAD
+[0.8.0-nixos.1]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.7.1...v0.8.0-nixos.1
 [0.7.1]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.7.0...v0.7.1
 [0.7.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.6.0...v0.7.0
 [0.6.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.5.0...v0.6.0
