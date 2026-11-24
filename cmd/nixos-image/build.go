@@ -17,8 +17,9 @@ import (
 )
 
 // buildLabel marks the throwaway server and SSH key of a build, so that a run
-// killed before its cleanup leaves resources a label selector finds.
-const buildLabel = "karpenter.hetzner.cloud/nixos-image-build"
+// killed before its cleanup leaves resources a label selector finds. hcloud
+// refuses a server label key under karpenter.hetzner.cloud/.
+const buildLabel = "nixos-image-build"
 
 // builderImage is the system image a builder boots before nixos-anywhere
 // kexecs it into the NixOS installer.
