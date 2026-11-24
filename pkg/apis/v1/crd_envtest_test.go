@@ -171,27 +171,35 @@ func TestCRD_BootstrapAdmission(t *testing.T) {
 	}
 }
 
-// TestCRD_ImageSelectorAdmission checks that a nixos node class names the
-// snapshots it boots by label, and needs no k0s version and takes none.
+// TestCRD_ImageSelectorAdmission checks that a snapshot node class names its
+// snapshots by label or by ID, and brings its own join without a k0s version.
 func TestCRD_ImageSelectorAdmission(t *testing.T) {
 	c := startCRDClient(t)
 
-	nixos := map[string]any{"family": "nixos", "selector": map[string]any{"role": "k0s-worker"}}
+	byLabel := map[string]any{"family": "snapshot", "selector": map[string]any{"role": "k0s-worker"}}
+	byID := map[string]any{"family": "snapshot", "ids": []any{int64(460469663), int64(460469651)}}
 	join := map[string]any{"join": map[string]any{"inline": "#!/bin/sh\n"}}
+	joinAndVersion := map[string]any{"join": map[string]any{"inline": "#!/bin/sh\n"}, "k0sVersion": "v1.34.1+k0s.0"}
 	n := 0
 	for name, tc := range map[string]struct {
 		imageSelector map[string]any
 		bootstrap     map[string]any
 		admit         bool
 	}{
-		"debian":                 {map[string]any{"family": "debian"}, validBootstrap, true},
-		"debian, no k0s version": {map[string]any{"family": "debian"}, map[string]any{}, false},
-		"nixos, generated join":  {nixos, map[string]any{}, true},
-		"nixos, replaced join":   {nixos, join, true},
-		"nixos with k0s version": {nixos, validBootstrap, false},
-		"nixos without selector": {map[string]any{"family": "nixos"}, map[string]any{}, false},
-		"nixos, empty selector":  {map[string]any{"family": "nixos", "selector": map[string]any{}}, map[string]any{}, false},
-		"unknown family":         {map[string]any{"family": "ubuntu"}, validBootstrap, false},
+		"debian":                      {map[string]any{"family": "debian"}, validBootstrap, true},
+		"debian, no k0s version":      {map[string]any{"family": "debian"}, map[string]any{}, false},
+		"debian with ids":             {map[string]any{"family": "debian", "ids": []any{int64(1)}}, validBootstrap, false},
+		"snapshot by label":           {byLabel, join, true},
+		"snapshot by id":              {byID, join, true},
+		"snapshot by label and id":    {map[string]any{"family": "snapshot", "selector": map[string]any{"role": "k0s-worker"}, "ids": []any{int64(1)}}, join, false},
+		"snapshot by id with version": {map[string]any{"family": "snapshot", "ids": []any{int64(1)}, "version": "26.05"}, join, false},
+		"snapshot, id zero":           {map[string]any{"family": "snapshot", "ids": []any{int64(0)}}, join, false},
+		"snapshot, neither":           {map[string]any{"family": "snapshot"}, join, false},
+		"snapshot, empty selector":    {map[string]any{"family": "snapshot", "selector": map[string]any{}}, join, false},
+		"snapshot without join":       {byLabel, map[string]any{}, false},
+		"snapshot with k0s version":   {byLabel, joinAndVersion, false},
+		"snapshot, only k0s version":  {byLabel, validBootstrap, false},
+		"unknown family":              {map[string]any{"family": "ubuntu"}, validBootstrap, false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			n++

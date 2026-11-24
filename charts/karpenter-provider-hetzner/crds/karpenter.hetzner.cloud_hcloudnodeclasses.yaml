@@ -107,9 +107,8 @@ spec:
                       rule: has(self.inline) != has(self.secretRef)
                   join:
                     description: |-
-                      Join replaces the generated join. On a debian node class the generated
-                      join installs k0s K0sVersion; on a nixos node class it starts the k0s
-                      worker the image carries.
+                      Join replaces the generated join, which installs k0s K0sVersion on a
+                      debian node class. A snapshot node class requires it.
                     properties:
                       inline:
                         minLength: 1
@@ -138,8 +137,8 @@ spec:
                       rule: has(self.inline) != has(self.secretRef)
                   k0sVersion:
                     description: |-
-                      K0sVersion is the k0s release the generated join installs on a debian
-                      node class, such as v1.34.1+k0s.0. It should match the control plane's.
+                      K0sVersion is the k0s release the generated join installs, such as
+                      v1.34.1+k0s.0. It should match the control plane's.
                     pattern: ^v[0-9]+\.[0-9]+\.[0-9]+\+k0s\.[0-9]+$
                     type: string
                 type: object
@@ -166,11 +165,20 @@ spec:
                   family:
                     description: |-
                       Family is debian, for Hetzner's Debian images or labelled snapshots of
-                      your own, or nixos, for labelled snapshots only.
+                      your own, or snapshot, for snapshots of your own only, of any OS.
                     enum:
                     - debian
-                    - nixos
+                    - snapshot
                     type: string
+                  ids:
+                    description: |-
+                      IDs pins family snapshot to explicit snapshots, at most one per
+                      architecture; an architecture none of them has gets no image.
+                    items:
+                      format: int64
+                      minimum: 1
+                      type: integer
+                    type: array
                   selector:
                     additionalProperties:
                       type: string
@@ -185,10 +193,13 @@ spec:
                 - family
                 type: object
                 x-kubernetes-validations:
-                - message: family nixos resolves to snapshots only, so selector is
-                    required
-                  rule: self.family != 'nixos' || (has(self.selector) && size(self.selector)
-                    > 0)
+                - message: family snapshot needs exactly one of selector and ids
+                  rule: self.family != 'snapshot' || ((has(self.selector) && size(self.selector)
+                    > 0) != (has(self.ids) && size(self.ids) > 0))
+                - message: ids apply to family snapshot only
+                  rule: '!has(self.ids) || self.family == ''snapshot'''
+                - message: version does not apply to ids
+                  rule: '!has(self.ids) || !has(self.version)'
               kubelet:
                 description: |-
                   Kubelet declares the reservations this node class's bootstrap applies to
@@ -296,11 +307,12 @@ spec:
                 || !has(self.enablePublicIPv6) || self.enablePublicIPv6
             - message: bootstrap.k0sVersion is required unless bootstrap.join replaces
                 the generated join
-              rule: self.imageSelector.family == 'nixos' || has(self.bootstrap.join)
+              rule: self.imageSelector.family != 'debian' || has(self.bootstrap.join)
                 || has(self.bootstrap.k0sVersion)
-            - message: bootstrap.k0sVersion does not apply to family nixos, whose
-                image carries k0s
-              rule: self.imageSelector.family != 'nixos' || !has(self.bootstrap.k0sVersion)
+            - message: 'family snapshot needs bootstrap.join and takes no bootstrap.k0sVersion:
+                the generated join installs k0s on Debian only'
+              rule: self.imageSelector.family != 'snapshot' || (has(self.bootstrap.join)
+                && !has(self.bootstrap.k0sVersion))
           status:
             properties:
               conditions:

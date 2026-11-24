@@ -10,9 +10,10 @@ HCloudNodeClass spec fields:
 |-------|------|----------|---------|-------------|
 | `locations` | `[]string` | yes | None | Hetzner locations to create servers in. At least one. |
 | `networkID` | `int64` | no | None | ID of the private network every server attaches to. Without it, servers have only their public addresses, so `enablePublicIPv4` or `enablePublicIPv6` must stay `true`. |
-| `imageSelector.family` | `debian` or `nixos` | yes | None | OS image family. `debian` boots Hetzner's Debian images or your snapshots; `nixos` boots your snapshots only, and requires `selector`. |
+| `imageSelector.family` | `debian` or `snapshot` | yes | None | Image family. `debian` boots Hetzner's Debian images or your snapshots; `snapshot` boots snapshots of your own only, of any OS, and requires `selector` or `ids`, and `bootstrap.join`. |
 | `imageSelector.version` | `string` | no | Newest matching image | Substring matched against the image description, for example `13` for Debian 13. |
-| `imageSelector.selector` | `map[string]string` | `nixos` only | None | hcloud labels an image must carry, all of them, for example `{"role": "k0s-worker"}`. Hetzner's Debian images carry no labels, so a selector picks the newest matching snapshot of your own. |
+| `imageSelector.selector` | `map[string]string` | `snapshot`, unless `ids` is set | None | hcloud labels an image must carry, all of them, for example `{"role": "k0s-worker"}`. Hetzner's Debian images carry no labels, so a selector picks the newest matching snapshot of your own. Once a newer snapshot matches, the node class resolves it within five minutes, and nodes on the older one drift and are replaced within the NodePool's disruption budget; `budgets: [{nodes: "1"}]` replaces them one at a time. |
+| `imageSelector.ids` | `[]int64` | `snapshot`, unless `selector` is set | None | Snapshot IDs to boot, at most one per architecture; an architecture none of them has gets no image. Nodes drift when the list changes. Not with `version`. |
 | `firewallIDs` | `[]int64` | no | None | Firewalls attached to every server. |
 | `sshKeyIDs` | `[]int64` | no | None | SSH keys installed on every server. |
 | `placementGroupStrategy` | `spread` or `none` | no | `spread` | `spread` places servers in a spread placement group, on separate physical hosts. `none` uses no placement group. |
@@ -33,9 +34,9 @@ bootstrap fields:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `beforeJoin` | part | no | Runs before the join. |
-| `join` | part | no | Replaces the generated join. On a `debian` node class the generated join installs k0s `k0sVersion`; on a `nixos` node class it starts the k0s worker the image carries. |
+| `join` | part | `snapshot` | Replaces the generated k0s join. A `snapshot` node class has no generated join. |
 | `afterJoin` | part | no | Runs after the join. |
-| `k0sVersion` | `string` | `debian`, unless `join` is set | k0s release tag the generated join installs, such as `v1.34.1+k0s.0`. A `nixos` node class refuses it: its k0s comes with the image. |
+| `k0sVersion` | `string` | `debian`, unless `join` is set | k0s release tag the generated join installs, such as `v1.34.1+k0s.0`. A `snapshot` node class refuses it. |
 
 A part is one cloud-init document, such as a shell script or a cloud-config,
 given exactly one way:

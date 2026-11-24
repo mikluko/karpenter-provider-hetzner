@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -74,8 +75,9 @@ func NewProvider(client ImageClient) *Provider {
 }
 
 // Resolve returns the best matching image for the given selector and architecture.
-// The supported families are "debian" and "nixos". A nixos image is always a
-// snapshot, and resolving one without a label selector fails permanently.
+// The supported families are "debian" and "snapshot". A snapshot image comes
+// from selector.IDs or, without them, from a label selector; resolving one with
+// neither fails permanently.
 func (p *Provider) Resolve(ctx context.Context, selector apiv1.ImageSelector, arch hcloud.Architecture) (*hcloud.Image, error) {
 	log := logf.FromContext(ctx)
 	ls := labelSelectorString(selector.Selector)
@@ -84,13 +86,17 @@ func (p *Provider) Resolve(ctx context.Context, selector apiv1.ImageSelector, ar
 	switch strings.ToLower(selector.Family) {
 	case apiv1.FamilyDebian:
 		img, err = p.resolveSystem(ctx, apiv1.FamilyDebian, selector.Version, arch, ls)
-	case apiv1.FamilyNixOS:
-		if ls == "" {
-			return nil, newPermanentError("image family nixos needs a label selector")
+	case apiv1.FamilySnapshot:
+		switch {
+		case len(selector.IDs) > 0:
+			img, err = p.snapshotByID(ctx, selector.IDs, arch)
+		case ls != "":
+			img, err = p.newestSnapshot(ctx, apiv1.FamilySnapshot, selector.Version, arch, ls)
+		default:
+			return nil, newPermanentError("image family snapshot needs ids or a label selector")
 		}
-		img, err = p.newestSnapshot(ctx, apiv1.FamilyNixOS, selector.Version, arch, ls)
 	default:
-		return nil, newPermanentError("unsupported image family %q: must be debian or nixos", selector.Family)
+		return nil, newPermanentError("unsupported image family %q: must be debian or snapshot", selector.Family)
 	}
 	if err != nil {
 		return nil, err
@@ -142,6 +148,32 @@ func (p *Provider) resolveSystem(ctx context.Context, family, version string, ar
 		return nil, newPermanentError("no %s image found for version %q and arch %q", family, version, arch)
 	}
 	return nil, newPermanentError("no %s image found for arch %q", family, arch)
+}
+
+// snapshotByID returns the one snapshot of arch among ids. None, or more than
+// one, is permanent: the ids are the node class's, not the catalogue's.
+func (p *Provider) snapshotByID(ctx context.Context, ids []int64, arch hcloud.Architecture) (*hcloud.Image, error) {
+	images, err := p.client.AllWithOpts(ctx, hcloud.ImageListOpts{
+		Type:         []hcloud.ImageType{hcloud.ImageTypeSnapshot},
+		Architecture: []hcloud.Architecture{arch},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("listing snapshots: %w", err)
+	}
+	var found *hcloud.Image
+	for _, img := range images {
+		if !slices.Contains(ids, img.ID) {
+			continue
+		}
+		if found != nil {
+			return nil, newPermanentError("snapshots %d and %d are both %s; ids takes one per architecture", found.ID, img.ID, arch)
+		}
+		found = img
+	}
+	if found == nil {
+		return nil, newPermanentError("none of snapshots %v is %s", ids, arch)
+	}
+	return found, nil
 }
 
 // newestSnapshot returns the newest snapshot matching the label selector whose

@@ -188,7 +188,7 @@ func TestResolveDebian_NoSelectorIgnoresSnapshots(t *testing.T) {
 	}
 }
 
-func TestResolveNixOS_PicksNewestLabelledSnapshot(t *testing.T) {
+func TestResolveSnapshot_PicksNewestLabelledSnapshot(t *testing.T) {
 	fc := &mockImageClient{images: []*hcloud.Image{
 		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "nixos 26.05 old", baseTime),
 		makeImage(2, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "nixos 26.05 new", baseTime.Add(time.Hour)),
@@ -196,7 +196,7 @@ func TestResolveNixOS_PicksNewestLabelledSnapshot(t *testing.T) {
 		makeImage(4, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Debian 13", baseTime.Add(3*time.Hour)),
 	}}
 	p := NewProvider(fc)
-	sel := apiv1.ImageSelector{Family: "nixos", Selector: map[string]string{"role": "k0s-worker"}}
+	sel := apiv1.ImageSelector{Family: "snapshot", Selector: map[string]string{"role": "k0s-worker"}}
 	img, err := p.Resolve(context.Background(), sel, hcloud.ArchitectureX86)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -209,12 +209,12 @@ func TestResolveNixOS_PicksNewestLabelledSnapshot(t *testing.T) {
 	}
 }
 
-func TestResolveNixOS_VersionPin(t *testing.T) {
+func TestResolveSnapshot_VersionPin(t *testing.T) {
 	p := NewProvider(&mockImageClient{images: []*hcloud.Image{
 		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureARM, "nixos 25.11", baseTime),
 		makeImage(2, hcloud.ImageTypeSnapshot, hcloud.ArchitectureARM, "nixos 26.05", baseTime.Add(time.Hour)),
 	}})
-	sel := apiv1.ImageSelector{Family: "nixos", Version: "25.11", Selector: map[string]string{"role": "k0s-worker"}}
+	sel := apiv1.ImageSelector{Family: "snapshot", Version: "25.11", Selector: map[string]string{"role": "k0s-worker"}}
 	img, err := p.Resolve(context.Background(), sel, hcloud.ArchitectureARM)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -224,29 +224,65 @@ func TestResolveNixOS_VersionPin(t *testing.T) {
 	}
 }
 
-// TestResolveNixOS_NeverPicksSystemImage pins that nixos resolves to snapshots
-// only: Hetzner sells no NixOS image, so a system image is always the wrong one.
-func TestResolveNixOS_NeverPicksSystemImage(t *testing.T) {
+// TestResolveSnapshot_NeverPicksSystemImage pins that family snapshot resolves
+// to snapshots only, even where a system image carries matching labels.
+func TestResolveSnapshot_NeverPicksSystemImage(t *testing.T) {
 	p := NewProvider(&mockImageClient{images: []*hcloud.Image{
 		makeImage(1, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "NixOS 26.05", baseTime),
 	}})
-	sel := apiv1.ImageSelector{Family: "nixos", Selector: map[string]string{"role": "k0s-worker"}}
+	sel := apiv1.ImageSelector{Family: "snapshot", Selector: map[string]string{"role": "k0s-worker"}}
 	_, err := p.Resolve(context.Background(), sel, hcloud.ArchitectureX86)
 	if !IsPermanent(err) {
 		t.Fatalf("expected a permanent error, got %v", err)
 	}
 }
 
-func TestResolveNixOS_NoSelectorIsPermanent(t *testing.T) {
+func TestResolveSnapshot_NoSelectorIsPermanent(t *testing.T) {
 	fc := &mockImageClient{images: []*hcloud.Image{
 		makeImage(1, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "nixos 26.05", baseTime),
 	}}
-	_, err := NewProvider(fc).Resolve(context.Background(), apiv1.ImageSelector{Family: "nixos"}, hcloud.ArchitectureX86)
+	_, err := NewProvider(fc).Resolve(context.Background(), apiv1.ImageSelector{Family: "snapshot"}, hcloud.ArchitectureX86)
 	if !IsPermanent(err) {
 		t.Fatalf("expected a permanent error, got %v", err)
 	}
 	if fc.lastOpts.Type != nil {
 		t.Errorf("expected no image listing without a selector, got %+v", fc.lastOpts)
+	}
+}
+
+func TestResolveSnapshot_ByID(t *testing.T) {
+	images := []*hcloud.Image{
+		makeImage(10, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "x86 pinned", baseTime),
+		makeImage(11, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "x86 newer, not pinned", baseTime.Add(time.Hour)),
+		makeImage(20, hcloud.ImageTypeSnapshot, hcloud.ArchitectureARM, "arm pinned", baseTime),
+		makeImage(30, hcloud.ImageTypeSystem, hcloud.ArchitectureX86, "Debian 13", baseTime),
+	}
+	sel := apiv1.ImageSelector{Family: "snapshot", IDs: []int64{10, 20, 30}}
+	for arch, want := range map[hcloud.Architecture]int64{hcloud.ArchitectureX86: 10, hcloud.ArchitectureARM: 20} {
+		img, err := NewProvider(&mockImageClient{images: images}).Resolve(context.Background(), sel, arch)
+		if err != nil {
+			t.Fatalf("%s: %v", arch, err)
+		}
+		if img.ID != want {
+			t.Errorf("%s: got ID=%d, want %d", arch, img.ID, want)
+		}
+	}
+}
+
+func TestResolveSnapshot_ByIDIsPermanentWhenNotOne(t *testing.T) {
+	images := []*hcloud.Image{
+		makeImage(10, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "a", baseTime),
+		makeImage(11, hcloud.ImageTypeSnapshot, hcloud.ArchitectureX86, "b", baseTime),
+	}
+	for name, ids := range map[string][]int64{
+		"none for the architecture": {99},
+		"two for the architecture":  {10, 11},
+	} {
+		sel := apiv1.ImageSelector{Family: "snapshot", IDs: ids}
+		_, err := NewProvider(&mockImageClient{images: images}).Resolve(context.Background(), sel, hcloud.ArchitectureX86)
+		if !IsPermanent(err) {
+			t.Errorf("%s: want a permanent error, got %v", name, err)
+		}
 	}
 }
 
