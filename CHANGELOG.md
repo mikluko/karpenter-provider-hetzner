@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-25
+
+### Security
+
+- `golang.org/x/net` v0.62.0 (GO-2026-6860, GO-2026-6866), `golang.org/x/crypto` v0.59.0 (GO-2026-5932) and `go.opentelemetry.io/otel` v1.47.0 (GO-2026-6974, GO-2026-6975). The controller calls none of the affected code.
+
 ## [0.8.0] - 2026-11-25
 
 ### Added
@@ -141,7 +147,8 @@ history is in the [upstream changelog](https://github.com/mikluko/karpenter-prov
 - **Breaking:** the `talos` and `ubuntu` image families; `debian` is the only one.
 - The chart's Artifact Hub annotations.
 
-[Unreleased]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0...HEAD
+[Unreleased]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.1...HEAD
+[0.8.1]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0...v0.8.1
 [0.8.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0-nixos.3...v0.8.0
 [0.8.0-nixos.3]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0-nixos.2...v0.8.0-nixos.3
 [0.8.0-nixos.2]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0-nixos.1...v0.8.0-nixos.2
