@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** `nodeNames` is replaced by `nodeNameTemplates`: Go templates with the sprig functions, given the node class's and the NodeClaim's names and labels, the location and a random number. A name of the old list is a template of its own. The default, `{{ .NodeClaim.Name }}`, keeps naming servers after their NodeClaims.
+
 ## [0.8.0-nixos.2] - 2026-11-25
 
 ### Added

@@ -6,6 +6,7 @@ package cloudprovider_test
 import (
 	"context"
 	"errors"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -565,7 +566,7 @@ func TestCreate_UserData(t *testing.T) {
 	}
 }
 
-func TestCreate_NamesServerAfterNodeClaimWithoutNodeNames(t *testing.T) {
+func TestCreate_NamesServerAfterNodeClaimByDefault(t *testing.T) {
 	cp, fsc, _ := buildCPWithObjects(t, baselineNodeClass())
 
 	if _, err := cp.Create(context.Background(), createNodeClaim()); err != nil {
@@ -576,12 +577,63 @@ func TestCreate_NamesServerAfterNodeClaimWithoutNodeNames(t *testing.T) {
 	}
 }
 
-// TestCreate_NodeNamesSkipsTakenNames verifies a server takes the one name of
-// the pool that neither a Node of the cluster nor a server of the project holds,
-// whichever node class or cluster that Node or server belongs to.
-func TestCreate_NodeNamesSkipsTakenNames(t *testing.T) {
+// TestCreate_NodeNameTemplateRendersData verifies a template is given the
+// names and labels of the node class and the NodeClaim, the server's location
+// and a random number, through the sprig functions.
+func TestCreate_NodeNameTemplateRendersData(t *testing.T) {
 	nc := baselineNodeClass()
-	nc.Spec.NodeNames = []string{"alpha", "beta", "gamma"}
+	nc.Labels = map[string]string{"sarak.sh/role": "worker"}
+	nc.Spec.NodeNameTemplates = []string{`{{ index .NodeClass.Labels "sarak.sh/role" }}-{{ .NodeClass.Name }}-` +
+		`{{ index .NodeClaim.Labels "karpenter.sh/nodepool" }}-{{ .NodeClaim.Name }}-` +
+		`{{ .Zone }}-{{ .Rand | printf "%016x" | trunc 6 }}`}
+	cp, fsc, _ := buildCPWithObjects(t, nc)
+	claim := createNodeClaim()
+	claim.Labels = map[string]string{karpv1.NodePoolLabelKey: "pool"}
+
+	if _, err := cp.Create(context.Background(), claim); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if !regexp.MustCompile(`^worker-default-pool-claim-nbg1-[0-9a-f]{6}$`).MatchString(fsc.lastOpts.Name) {
+		t.Errorf("server name = %q, want worker-default-pool-claim-nbg1- and six hex characters", fsc.lastOpts.Name)
+	}
+}
+
+// TestCreate_NodeNameTemplateFails verifies a template that does not parse,
+// does not run, or renders no DNS label fails the launch with
+// NodeClassNotReadyError, creating nothing.
+func TestCreate_NodeNameTemplateFails(t *testing.T) {
+	for name, tmpl := range map[string]string{
+		"does not parse":       "node-{{ .Zone",
+		"unknown field":        "node-{{ .NodePool }}",
+		"env is not available": `node-{{ env "HCLOUD_TOKEN" }}`,
+		"not a DNS label":      "Node-{{ .Zone }}",
+		"longer than a label":  `{{ repeat 64 "a" }}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			nc := baselineNodeClass()
+			nc.Spec.NodeNameTemplates = []string{"alpha", tmpl}
+			cp, fsc, kube := buildCPWithObjects(t, nc)
+
+			_, err := cp.Create(context.Background(), createNodeClaim())
+			if !karpcp.IsNodeClassNotReadyError(err) {
+				t.Fatalf("Create error = %v, want NodeClassNotReadyError", err)
+			}
+			if len(fsc.servers) != 0 {
+				t.Errorf("servers created: %d", len(fsc.servers))
+			}
+			if tokens := joinTokenSecrets(t, kube); len(tokens) != 0 {
+				t.Errorf("join tokens minted: %d", len(tokens))
+			}
+		})
+	}
+}
+
+// TestCreate_NodeNameTemplatesSkipTakenNames verifies a server takes the one
+// rendered name that neither a Node of the cluster nor a server of the project
+// holds, whichever node class or cluster that Node or server belongs to.
+func TestCreate_NodeNameTemplatesSkipTakenNames(t *testing.T) {
+	nc := baselineNodeClass()
+	nc.Spec.NodeNameTemplates = []string{"alpha", "beta", "gamma"}
 	node := &corev1.Node{Name: "alpha"}
 	cp, fsc, _ := buildCPWithObjects(t, nc, node)
 	fsc.servers[7] = &hcloud.Server{ID: 7, Name: "beta"}
@@ -597,11 +649,12 @@ func TestCreate_NodeNamesSkipsTakenNames(t *testing.T) {
 	}
 }
 
-// TestCreate_NodeNamesExhausted verifies a pool with no free name creates no
-// server and mints no join token, and fails with InsufficientCapacityError.
+// TestCreate_NodeNamesExhausted verifies that with every rendered name taken
+// no server is created and no join token minted, and the launch fails with
+// InsufficientCapacityError.
 func TestCreate_NodeNamesExhausted(t *testing.T) {
 	nc := baselineNodeClass()
-	nc.Spec.NodeNames = []string{"alpha"}
+	nc.Spec.NodeNameTemplates = []string{"alpha"}
 	node := &corev1.Node{Name: "alpha"}
 	cp, fsc, kube := buildCPWithObjects(t, nc, node)
 
@@ -621,7 +674,7 @@ func TestCreate_NodeNamesExhausted(t *testing.T) {
 // that was not created can be taken by the next launch.
 func TestCreate_NodeNamesFreedByFailedCreate(t *testing.T) {
 	nc := baselineNodeClass()
-	nc.Spec.NodeNames = []string{"alpha"}
+	nc.Spec.NodeNameTemplates = []string{"alpha"}
 	cp, fsc, _ := buildCPWithObjects(t, nc)
 	fsc.createErr = errors.New("boom")
 	if _, err := cp.Create(context.Background(), createNodeClaim()); err == nil {

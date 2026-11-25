@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -128,38 +129,49 @@ func TestCRD_NetworkAdmission(t *testing.T) {
 	}
 }
 
-// TestCRD_NodeNamesAdmission checks that nodeNames takes distinct hostnames only.
-func TestCRD_NodeNamesAdmission(t *testing.T) {
+// TestCRD_NodeNameTemplatesAdmission checks that nodeNameTemplates defaults to
+// the NodeClaim name and takes no empty list or template.
+func TestCRD_NodeNameTemplatesAdmission(t *testing.T) {
 	c := startCRDClient(t)
 
 	n := 0
 	for name, tc := range map[string]struct {
-		names []any
-		admit bool
+		templates []any
+		admit     bool
+		want      []any
 	}{
-		"hostnames":         {[]any{"alpha", "delta-two"}, true},
-		"duplicate":         {[]any{"alpha", "alpha"}, false},
-		"upper case":        {[]any{"Alpha"}, false},
-		"dot":               {[]any{"alpha.sarak.sh"}, false},
-		"leading hyphen":    {[]any{"-alpha"}, false},
-		"longer than label": {[]any{"g" + fmt.Sprintf("%063d", 0)}, false},
+		"left out":       {nil, true, []any{"{{ .NodeClaim.Name }}"}},
+		"templates":      {[]any{"alpha", "node-{{ .Zone }}"}, true, []any{"alpha", "node-{{ .Zone }}"}},
+		"empty list":     {[]any{}, false, nil},
+		"empty template": {[]any{""}, false, nil},
 	} {
 		t.Run(name, func(t *testing.T) {
 			n++
-			err := c.Create(context.Background(), &unstructured.Unstructured{Object: map[string]any{
+			spec := map[string]any{
+				"locations":     []any{"nbg1"},
+				"networkID":     int64(1),
+				"imageSelector": map[string]any{"family": "debian"},
+				"bootstrap":     validBootstrap,
+			}
+			if tc.templates != nil {
+				spec["nodeNameTemplates"] = tc.templates
+			}
+			obj := &unstructured.Unstructured{Object: map[string]any{
 				"apiVersion": "karpenter.hetzner.cloud/v1",
 				"kind":       "HCloudNodeClass",
 				"metadata":   map[string]any{"name": fmt.Sprintf("names-%d", n)},
-				"spec": map[string]any{
-					"locations":     []any{"nbg1"},
-					"networkID":     int64(1),
-					"imageSelector": map[string]any{"family": "debian"},
-					"bootstrap":     validBootstrap,
-					"nodeNames":     tc.names,
-				},
-			}})
+				"spec":       spec,
+			}}
+			err := c.Create(context.Background(), obj)
 			if (err == nil) != tc.admit {
-				t.Errorf("admitted=%v, want %v (err: %v)", err == nil, tc.admit, err)
+				t.Fatalf("admitted=%v, want %v (err: %v)", err == nil, tc.admit, err)
+			}
+			if !tc.admit {
+				return
+			}
+			got, _, _ := unstructured.NestedSlice(obj.Object, "spec", "nodeNameTemplates")
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("nodeNameTemplates = %v, want %v", got, tc.want)
 			}
 		})
 	}

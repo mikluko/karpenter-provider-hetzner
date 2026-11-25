@@ -127,8 +127,8 @@ func (in *HCloudNodeClassSpec) DeepCopyInto(out *HCloudNodeClassSpec) {
 			(*out)[key] = val
 		}
 	}
-	if in.NodeNames != nil {
-		in, out := &in.NodeNames, &out.NodeNames
+	if in.NodeNameTemplates != nil {
+		in, out := &in.NodeNameTemplates, &out.NodeNameTemplates
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}

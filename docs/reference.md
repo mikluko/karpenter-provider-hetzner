@@ -20,9 +20,40 @@ HCloudNodeClass spec fields:
 | `enablePublicIPv4` | `bool` | no | `true` | Attach a public IPv4. Hetzner bills it separately. |
 | `enablePublicIPv6` | `bool` | no | `true` | Attach a public IPv6. |
 | `labels` | `map[string]string` | no | None | Extra hcloud labels on every server. |
-| `nodeNames` | `[]string` | no | The NodeClaim name | Names a server, and so its hostname and Node, is given: one at random among those no Node of the cluster and no server of the Hetzner project holds, whichever node class or cluster it belongs to. Each is a lowercase DNS label. Once every name is taken, the launch fails with insufficient capacity. Changing the list does not drift nodes. |
+| `nodeNameTemplates` | `[]string` | no | `["{{ .NodeClaim.Name }}"]` | Templates for the name of a server, and so of its hostname and Node. See [nodeNameTemplates](#nodenametemplates). |
 | `bootstrap` | object | yes | None | How a server joins the cluster. See [bootstrap](#bootstrap). |
 | `kubelet` | object | no | See [kubelet](#kubelet) | Kubelet reservations the bootstrap applies. |
+
+### nodeNameTemplates
+
+Each template is a Go [text/template](https://pkg.go.dev/text/template) with
+the [sprig](https://masterminds.github.io/sprig/) functions, except `env`,
+`expandenv` and `getHostByName`. Every template is rendered when a server is
+created, and the server takes one of the names at random, among those no Node
+of the cluster and no server of the Hetzner project holds, whichever node
+class or cluster it belongs to. With none free, the launch fails with
+insufficient capacity. A template that does not render a lowercase DNS label
+of at most 63 characters fails the launch. Changing the templates does not
+drift nodes.
+
+A template is given:
+
+| Field | Value |
+|-------|-------|
+| `.NodeClass.Name`, `.NodeClass.Labels` | The node class's name and metadata labels. |
+| `.NodeClaim.Name`, `.NodeClaim.Labels` | The NodeClaim's name and labels, `karpenter.sh/nodepool` among them. |
+| `.Zone` | The Hetzner location the server is created in, such as `fsn1`. |
+| `.Rand` | A random non-negative `int64`, drawn for each template. |
+
+A template without actions is a name of its own. For example, these templates
+name a server `bugoga-fsn1-` and six random hex digits, or `pushkin` while no
+Node or server holds that name:
+
+```yaml
+nodeNameTemplates:
+  - 'bugoga-{{ .Zone }}-{{ .Rand | printf "%016x" | trunc 6 }}'
+  - pushkin
+```
 
 ### bootstrap
 
@@ -52,7 +83,7 @@ given exactly one way:
 | Variable | Value |
 |----------|-------|
 | `JOIN_TOKEN` | k0s worker join token for the node's bootstrap token. |
-| `NODE_NAME` | Server name, also its hostname: a name from `nodeNames`, or the NodeClaim name. |
+| `NODE_NAME` | Server name, also its hostname, rendered from `nodeNameTemplates`. |
 | `REGISTER_TAINTS` | Comma-separated taints for `--register-with-taints`. |
 | `KUBELET_EXTRA_ARGS` | Not written by the provider. A `beforeJoin` part may append it; the generated join passes it to the kubelet. |
 

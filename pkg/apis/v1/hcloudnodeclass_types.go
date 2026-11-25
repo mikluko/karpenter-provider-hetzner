@@ -57,17 +57,22 @@ type HCloudNodeClassSpec struct {
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// NodeNames is the pool a server's name, which is also its hostname and
-	// Node name, is drawn from at random, among the names no Node of the
-	// cluster and no server of the Hetzner project holds; once every name is
-	// taken, no server is created. Without it, a server takes its NodeClaim's
-	// name.
-	// +listType=set
+	// NodeNameTemplates name a server, which is also its hostname and Node.
+	// Each is a Go text/template with the sprig functions but env, expandenv
+	// and getHostByName, given .NodeClass and .NodeClaim, each with .Name and
+	// .Labels, .Zone, the server's location, and .Rand, a random non-negative
+	// int64, such as node-{{ .Zone }}-{{ .Rand | printf "%016x" | trunc 6 }}.
+	// All are rendered, and the server takes one of the names, at random, that
+	// no Node of the cluster and no server of the Hetzner project holds; with
+	// none, no server is created. A name that is not a lowercase DNS label
+	// fails the launch.
+	// +kubebuilder:default={"{{ .NodeClaim.Name }}"}
+	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:MaxItems=1000
-	// +kubebuilder:validation:items:MaxLength=63
-	// +kubebuilder:validation:items:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
+	// +kubebuilder:validation:items:MinLength=1
+	// +kubebuilder:validation:items:MaxLength=1024
 	// +optional
-	NodeNames []string `json:"nodeNames,omitempty"`
+	NodeNameTemplates []string `json:"nodeNameTemplates,omitempty"`
 
 	// Bootstrap is how a server joins the cluster.
 	Bootstrap Bootstrap `json:"bootstrap"`

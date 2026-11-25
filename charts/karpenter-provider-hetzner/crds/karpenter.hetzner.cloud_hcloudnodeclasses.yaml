@@ -285,20 +285,26 @@ spec:
                 format: int64
                 minimum: 1
                 type: integer
-              nodeNames:
+              nodeNameTemplates:
+                default:
+                - '{{ .NodeClaim.Name }}'
                 description: |-
-                  NodeNames is the pool a server's name, which is also its hostname and
-                  Node name, is drawn from at random, among the names no Node of the
-                  cluster and no server of the Hetzner project holds; once every name is
-                  taken, no server is created. Without it, a server takes its NodeClaim's
-                  name.
+                  NodeNameTemplates name a server, which is also its hostname and Node.
+                  Each is a Go text/template with the sprig functions but env, expandenv
+                  and getHostByName, given .NodeClass and .NodeClaim, each with .Name and
+                  .Labels, .Zone, the server's location, and .Rand, a random non-negative
+                  int64, such as node-{{ .Zone }}-{{ .Rand | printf "%016x" | trunc 6 }}.
+                  All are rendered, and the server takes one of the names, at random, that
+                  no Node of the cluster and no server of the Hetzner project holds; with
+                  none, no server is created. A name that is not a lowercase DNS label
+                  fails the launch.
                 items:
-                  maxLength: 63
-                  pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                  maxLength: 1024
+                  minLength: 1
                   type: string
                 maxItems: 1000
+                minItems: 1
                 type: array
-                x-kubernetes-list-type: set
               placementGroupStrategy:
                 default: spread
                 enum:

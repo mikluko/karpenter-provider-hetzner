@@ -23,7 +23,7 @@ every part can source. The provider writes it before any other part runs:
 | Variable | Value |
 |----------|-------|
 | `JOIN_TOKEN` | A k0s worker join token: a kubeconfig for the API server in `apiServerURL`, holding the node's bootstrap token, gzipped and base64-encoded. |
-| `NODE_NAME` | The server's name, which is also its hostname: a name from `nodeNames`, or the NodeClaim name. |
+| `NODE_NAME` | The server's name, which is also its hostname, rendered from the node class's `nodeNameTemplates`. |
 | `REGISTER_TAINTS` | The taints the kubelet registers with, comma-separated: `karpenter.sh/unregistered:NoExecute`, then the NodeClaim's taints and startup taints. |
 
 A `beforeJoin` part may append `KUBELET_EXTRA_ARGS` to the file, and the

@@ -290,7 +290,7 @@ func (cp *CloudProvider) Create(ctx context.Context, nodeClaim *karpv1.NodeClaim
 	// Collect node pool name from NodeClaim labels (may be empty).
 	nodePoolName := nodeClaim.Labels[karpv1.NodePoolLabelKey]
 
-	name, releaseName, err := cp.nodeName(ctx, nodeClass, nodeClaim)
+	name, releaseName, err := cp.nodeName(ctx, nodeClass, nodeClaim, location)
 	if err != nil {
 		return nil, err
 	}

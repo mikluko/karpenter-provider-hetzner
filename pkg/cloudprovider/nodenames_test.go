@@ -9,6 +9,16 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
+func TestRenderNodeNames_EachTemplateDrawsItsOwnRand(t *testing.T) {
+	names, err := renderNodeNames([]string{"n{{ .Rand }}", "n{{ .Rand }}"}, nodeNameData{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if names[0] == names[1] {
+		t.Errorf("both templates rendered %q", names[0])
+	}
+}
+
 func TestNodeNameHolds_HeldNameIsNotPickedAgain(t *testing.T) {
 	var h nodeNameHolds
 	pool := []string{"alpha", "beta"}
