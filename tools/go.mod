@@ -1,6 +1,6 @@
 module sarak.sh/mikluko/karpenter-provider-hetzner/tools
 
-go 1.27.3
+go 1.27.4
 
 tool (
 	github.com/go-task/task/v3/cmd/task
