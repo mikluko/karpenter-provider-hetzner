@@ -49,6 +49,7 @@ type CloudProvider struct {
 	typeProvider     *instancetype.Provider
 	imageProvider    *imagefamily.Provider
 	joiner           *bootstrap.Joiner
+	nodeNameHolds    nodeNameHolds
 }
 
 // NewCloudProvider creates a new CloudProvider.
@@ -289,14 +290,20 @@ func (cp *CloudProvider) Create(ctx context.Context, nodeClaim *karpv1.NodeClaim
 	// Collect node pool name from NodeClaim labels (may be empty).
 	nodePoolName := nodeClaim.Labels[karpv1.NodePoolLabelKey]
 
-	userData, revokeJoinToken, err := cp.joiner.UserData(ctx, nodeClass, nodeClaim)
+	name, releaseName, err := cp.nodeName(ctx, nodeClass, nodeClaim)
+	if err != nil {
+		return nil, err
+	}
+	defer releaseName()
+
+	userData, revokeJoinToken, err := cp.joiner.UserData(ctx, nodeClass, nodeClaim, name)
 	if err != nil {
 		return nil, fmt.Errorf("building userData: %w", err)
 	}
 
 	// Create the server.
 	server, err := cp.instanceProvider.Create(ctx, instance.CreateOpts{
-		Name:                   nodeClaim.Name,
+		Name:                   name,
 		ServerType:             selected.Name,
 		Location:               location,
 		Image:                  image,

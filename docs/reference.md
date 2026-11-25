@@ -20,6 +20,7 @@ HCloudNodeClass spec fields:
 | `enablePublicIPv4` | `bool` | no | `true` | Attach a public IPv4. Hetzner bills it separately. |
 | `enablePublicIPv6` | `bool` | no | `true` | Attach a public IPv6. |
 | `labels` | `map[string]string` | no | None | Extra hcloud labels on every server. |
+| `nodeNames` | `[]string` | no | The NodeClaim name | Names a server, and so its hostname and Node, is given: one at random among those no Node of the cluster and no server of the Hetzner project holds, whichever node class or cluster it belongs to. Each is a lowercase DNS label. Once every name is taken, the launch fails with insufficient capacity. Changing the list does not drift nodes. |
 | `bootstrap` | object | yes | None | How a server joins the cluster. See [bootstrap](#bootstrap). |
 | `kubelet` | object | no | See [kubelet](#kubelet) | Kubelet reservations the bootstrap applies. |
 
@@ -51,7 +52,7 @@ given exactly one way:
 | Variable | Value |
 |----------|-------|
 | `JOIN_TOKEN` | k0s worker join token for the node's bootstrap token. |
-| `NODE_NAME` | NodeClaim name, also the server's hostname. |
+| `NODE_NAME` | Server name, also its hostname: a name from `nodeNames`, or the NodeClaim name. |
 | `REGISTER_TAINTS` | Comma-separated taints for `--register-with-taints`. |
 | `KUBELET_EXTRA_ARGS` | Not written by the provider. A `beforeJoin` part may append it; the generated join passes it to the kubelet. |
 

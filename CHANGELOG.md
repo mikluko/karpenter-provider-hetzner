@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `nodeNames` on a node class names its servers, and so their hostnames and Nodes, from a list: a random name no Node of the cluster and no server of the Hetzner project holds. A launch with no free name fails with insufficient capacity.
+
 ## [0.8.0-nixos.1] - 2026-11-24
 
 ### Added

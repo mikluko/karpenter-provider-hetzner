@@ -128,6 +128,43 @@ func TestCRD_NetworkAdmission(t *testing.T) {
 	}
 }
 
+// TestCRD_NodeNamesAdmission checks that nodeNames takes distinct hostnames only.
+func TestCRD_NodeNamesAdmission(t *testing.T) {
+	c := startCRDClient(t)
+
+	n := 0
+	for name, tc := range map[string]struct {
+		names []any
+		admit bool
+	}{
+		"hostnames":         {[]any{"alpha", "delta-two"}, true},
+		"duplicate":         {[]any{"alpha", "alpha"}, false},
+		"upper case":        {[]any{"Alpha"}, false},
+		"dot":               {[]any{"alpha.sarak.sh"}, false},
+		"leading hyphen":    {[]any{"-alpha"}, false},
+		"longer than label": {[]any{"g" + fmt.Sprintf("%063d", 0)}, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			n++
+			err := c.Create(context.Background(), &unstructured.Unstructured{Object: map[string]any{
+				"apiVersion": "karpenter.hetzner.cloud/v1",
+				"kind":       "HCloudNodeClass",
+				"metadata":   map[string]any{"name": fmt.Sprintf("names-%d", n)},
+				"spec": map[string]any{
+					"locations":     []any{"nbg1"},
+					"networkID":     int64(1),
+					"imageSelector": map[string]any{"family": "debian"},
+					"bootstrap":     validBootstrap,
+					"nodeNames":     tc.names,
+				},
+			}})
+			if (err == nil) != tc.admit {
+				t.Errorf("admitted=%v, want %v (err: %v)", err == nil, tc.admit, err)
+			}
+		})
+	}
+}
+
 // TestCRD_BootstrapAdmission checks that the generated join needs a k0s
 // version, and that each part is given exactly one way.
 func TestCRD_BootstrapAdmission(t *testing.T) {

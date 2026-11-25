@@ -57,6 +57,18 @@ type HCloudNodeClassSpec struct {
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
 
+	// NodeNames is the pool a server's name, which is also its hostname and
+	// Node name, is drawn from at random, among the names no Node of the
+	// cluster and no server of the Hetzner project holds; once every name is
+	// taken, no server is created. Without it, a server takes its NodeClaim's
+	// name.
+	// +listType=set
+	// +kubebuilder:validation:MaxItems=1000
+	// +kubebuilder:validation:items:MaxLength=63
+	// +kubebuilder:validation:items:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
+	// +optional
+	NodeNames []string `json:"nodeNames,omitempty"`
+
 	// Bootstrap is how a server joins the cluster.
 	Bootstrap Bootstrap `json:"bootstrap"`
 

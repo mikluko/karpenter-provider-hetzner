@@ -565,6 +565,78 @@ func TestCreate_UserData(t *testing.T) {
 	}
 }
 
+func TestCreate_NamesServerAfterNodeClaimWithoutNodeNames(t *testing.T) {
+	cp, fsc, _ := buildCPWithObjects(t, baselineNodeClass())
+
+	if _, err := cp.Create(context.Background(), createNodeClaim()); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if fsc.lastOpts.Name != "claim" {
+		t.Errorf("server name = %q, want the NodeClaim's", fsc.lastOpts.Name)
+	}
+}
+
+// TestCreate_NodeNamesSkipsTakenNames verifies a server takes the one name of
+// the pool that neither a Node of the cluster nor a server of the project holds,
+// whichever node class or cluster that Node or server belongs to.
+func TestCreate_NodeNamesSkipsTakenNames(t *testing.T) {
+	nc := baselineNodeClass()
+	nc.Spec.NodeNames = []string{"alpha", "beta", "gamma"}
+	node := &corev1.Node{Name: "alpha"}
+	cp, fsc, _ := buildCPWithObjects(t, nc, node)
+	fsc.servers[7] = &hcloud.Server{ID: 7, Name: "beta"}
+
+	if _, err := cp.Create(context.Background(), createNodeClaim()); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if fsc.lastOpts.Name != "gamma" {
+		t.Errorf("server name = %q, want gamma", fsc.lastOpts.Name)
+	}
+	if ud := fsc.lastUserData(); !strings.Contains(ud, "NODE_NAME='gamma'") {
+		t.Errorf("userData does not name the node gamma")
+	}
+}
+
+// TestCreate_NodeNamesExhausted verifies a pool with no free name creates no
+// server and mints no join token, and fails with InsufficientCapacityError.
+func TestCreate_NodeNamesExhausted(t *testing.T) {
+	nc := baselineNodeClass()
+	nc.Spec.NodeNames = []string{"alpha"}
+	node := &corev1.Node{Name: "alpha"}
+	cp, fsc, kube := buildCPWithObjects(t, nc, node)
+
+	_, err := cp.Create(context.Background(), createNodeClaim())
+	if !karpcp.IsInsufficientCapacityError(err) {
+		t.Fatalf("Create error = %v, want InsufficientCapacityError", err)
+	}
+	if len(fsc.servers) != 0 {
+		t.Errorf("servers created: %d", len(fsc.servers))
+	}
+	if tokens := joinTokenSecrets(t, kube); len(tokens) != 0 {
+		t.Errorf("join tokens minted: %d", len(tokens))
+	}
+}
+
+// TestCreate_NodeNamesFreedByFailedCreate verifies a name held for a server
+// that was not created can be taken by the next launch.
+func TestCreate_NodeNamesFreedByFailedCreate(t *testing.T) {
+	nc := baselineNodeClass()
+	nc.Spec.NodeNames = []string{"alpha"}
+	cp, fsc, _ := buildCPWithObjects(t, nc)
+	fsc.createErr = errors.New("boom")
+	if _, err := cp.Create(context.Background(), createNodeClaim()); err == nil {
+		t.Fatal("expected Create to fail")
+	}
+
+	fsc.createErr = nil
+	if _, err := cp.Create(context.Background(), createNodeClaim()); err != nil {
+		t.Fatalf("Create after a failed one: %v", err)
+	}
+	if fsc.lastOpts.Name != "alpha" {
+		t.Errorf("server name = %q, want alpha", fsc.lastOpts.Name)
+	}
+}
+
 // TestCreate_RevokesJoinTokenWhenServerCreateFails verifies no join token
 // outlives a server that was never created.
 func TestCreate_RevokesJoinTokenWhenServerCreateFails(t *testing.T) {

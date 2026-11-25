@@ -339,6 +339,20 @@ func (p *Provider) List(ctx context.Context) ([]*hcloud.Server, error) {
 	return servers, nil
 }
 
+// Names returns the name of every server in the Hetzner project, whoever
+// manages it: Hetzner refuses a server a name another one holds.
+func (p *Provider) Names(ctx context.Context) ([]string, error) {
+	servers, err := p.client.AllWithOpts(ctx, hcloud.ServerListOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("listing servers: %w", err)
+	}
+	names := make([]string, len(servers))
+	for i, s := range servers {
+		names[i] = s.Name
+	}
+	return names, nil
+}
+
 // ParseProviderID parses a Hetzner provider ID of the form "hcloud://<id>" and returns the integer ID.
 func ParseProviderID(providerID string) (int64, error) {
 	if !strings.HasPrefix(providerID, apiv1.ProviderIDPrefix) {

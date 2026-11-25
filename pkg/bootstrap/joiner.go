@@ -34,9 +34,10 @@ func NewJoiner(kubeClient client.Client, apiServerURL string, caData []byte) *Jo
 }
 
 // UserData creates a join token for nodeClaim and returns the userData for a
-// server of nc. JOIN_TOKEN is a k0s worker join token whichever join runs.
-// revoke deletes the token; call it when no server is created.
-func (j *Joiner) UserData(ctx context.Context, nc *apiv1.HCloudNodeClass, nodeClaim *karpv1.NodeClaim) (userData string, revoke func(context.Context) error, err error) {
+// server of nc whose Node is named nodeName. JOIN_TOKEN is a k0s worker join
+// token whichever join runs. revoke deletes the token; call it when no server
+// is created.
+func (j *Joiner) UserData(ctx context.Context, nc *apiv1.HCloudNodeClass, nodeClaim *karpv1.NodeClaim, nodeName string) (userData string, revoke func(context.Context) error, err error) {
 	parts, err := ResolveParts(ctx, j.kubeClient, &nc.Spec.Bootstrap)
 	if err != nil {
 		return "", nil, err
@@ -51,7 +52,7 @@ func (j *Joiner) UserData(ctx context.Context, nc *apiv1.HCloudNodeClass, nodeCl
 	}
 	userData, err = UserData(JoinEnv{
 		JoinToken:      joinToken,
-		NodeName:       nodeClaim.Name,
+		NodeName:       nodeName,
 		RegisterTaints: RegisterTaints(nodeClaim),
 	}, parts, nc.Spec.Bootstrap.K0sVersion)
 	if err != nil {

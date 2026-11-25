@@ -342,6 +342,23 @@ func TestList_ScopesByCluster(t *testing.T) {
 	}
 }
 
+func TestNames_ListsTheWholeProject(t *testing.T) {
+	client := newMockServerClient()
+	client.servers[1] = &hcloud.Server{ID: 1, Name: "alpha"}
+	p := NewProvider(client, "test-cluster")
+
+	names, err := p.Names(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if client.lastListSelector != "" {
+		t.Errorf("Names filtered by %q, want every server of the project", client.lastListSelector)
+	}
+	if len(names) != 1 || names[0] != "alpha" {
+		t.Errorf("Names = %v, want [alpha]", names)
+	}
+}
+
 func TestCreate_WaitsForActionsAndSetsPublicNet(t *testing.T) {
 	client := newMockServerClient()
 	client.action = &hcloud.Action{ID: 1}

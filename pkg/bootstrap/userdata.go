@@ -19,7 +19,7 @@ const JoinEnvPath = "/etc/karpenter-hetzner/join.env"
 type JoinEnv struct {
 	// JoinToken is the credential the node joins with.
 	JoinToken string
-	// NodeName is the NodeClaim name, which is also the server's hostname.
+	// NodeName is the server's name, which is also its hostname.
 	NodeName string
 	// RegisterTaints are the taints the kubelet registers with, in
 	// --register-with-taints syntax.

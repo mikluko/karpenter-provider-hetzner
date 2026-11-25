@@ -127,6 +127,11 @@ func (in *HCloudNodeClassSpec) DeepCopyInto(out *HCloudNodeClassSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.NodeNames != nil {
+		in, out := &in.NodeNames, &out.NodeNames
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	in.Bootstrap.DeepCopyInto(&out.Bootstrap)
 	if in.EnablePublicIPv4 != nil {
 		in, out := &in.EnablePublicIPv4, &out.EnablePublicIPv4

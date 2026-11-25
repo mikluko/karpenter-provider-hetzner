@@ -285,6 +285,20 @@ spec:
                 format: int64
                 minimum: 1
                 type: integer
+              nodeNames:
+                description: |-
+                  NodeNames is the pool a server's name, which is also its hostname and
+                  Node name, is drawn from at random, among the names no Node of the
+                  cluster and no server of the Hetzner project holds; once every name is
+                  taken, no server is created. Without it, a server takes its NodeClaim's
+                  name.
+                items:
+                  maxLength: 63
+                  pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                  type: string
+                maxItems: 1000
+                type: array
+                x-kubernetes-list-type: set
               placementGroupStrategy:
                 default: spread
                 enum:
