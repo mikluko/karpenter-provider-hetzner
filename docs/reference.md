@@ -46,13 +46,13 @@ A template is given:
 | `.Rand` | A random non-negative `int64`, drawn for each template. |
 
 A template without actions is a name of its own. For example, these templates
-name a server `bugoga-fsn1-` and six random hex digits, or `pushkin` while no
+name a server `worker-fsn1-` and six random hex digits, or `spare` while no
 Node or server holds that name:
 
 ```yaml
 nodeNameTemplates:
-  - 'bugoga-{{ .Zone }}-{{ .Rand | printf "%016x" | trunc 6 }}'
-  - pushkin
+  - 'worker-{{ .Zone }}-{{ .Rand | printf "%016x" | trunc 6 }}'
+  - spare
 ```
 
 ### bootstrap
