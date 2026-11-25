@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0-nixos.3] - 2026-11-25
+
 ### Changed
 
 - **Breaking:** `nodeNames` is replaced by `nodeNameTemplates`: Go templates with the sprig functions, given the node class's and the NodeClaim's names and labels, the location and a random number. A name of the old list is a template of its own. The default, `{{ .NodeClaim.Name }}`, keeps naming servers after their NodeClaims.
@@ -119,7 +121,8 @@ history is in the [upstream changelog](https://github.com/mikluko/karpenter-prov
 - **Breaking:** the `talos` and `ubuntu` image families; `debian` is the only one.
 - The chart's Artifact Hub annotations.
 
-[Unreleased]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0-nixos.2...HEAD
+[Unreleased]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0-nixos.3...HEAD
+[0.8.0-nixos.3]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0-nixos.2...v0.8.0-nixos.3
 [0.8.0-nixos.2]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0-nixos.1...v0.8.0-nixos.2
 [0.8.0-nixos.1]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.7.1...v0.8.0-nixos.1
 [0.7.1]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.7.0...v0.7.1
