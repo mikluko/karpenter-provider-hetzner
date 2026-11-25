@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-25
+
+### Added
+
+- `imageSelector.family: snapshot` boots snapshots of your own of any OS: the newest one carrying the labels in `imageSelector.selector`, or one per architecture from `imageSelector.ids`. A `snapshot` node class requires `bootstrap.join` and refuses `bootstrap.k0sVersion`.
+- `nodeNameTemplates` on a node class names its servers, and so their hostnames and Nodes: Go templates with the sprig functions, given the node class's and the NodeClaim's names and labels, the location and a random number. A server takes a random rendered name that no Node of the cluster and no server of the Hetzner project holds; a launch with none fails with insufficient capacity. The default, `{{ .NodeClaim.Name }}`, names servers after their NodeClaims.
+
+### Changed
+
+- **Breaking:** the project moved to `forge.sarak.sh/mikluko/karpenter-provider-hetzner`. The image is published to `sarak.sh/mikluko/karpenter-provider-hetzner` and the chart to `oci://sarak.sh/mikluko/charts/karpenter-provider-hetzner`; `helm upgrade` has to name the new chart URL. Releases up to 0.7.1 stay at `ghcr.io/mikluko`, and nothing newer is published there.
+- **Breaking:** the Go module path is `sarak.sh/mikluko/karpenter-provider-hetzner`.
+
+### Removed
+
+- Images and charts are no longer signed with cosign.
+
+### Security
+
+- Built with Go 1.27.4, which fixes an HTTP/1 server crash in `net/http` (GO-2026-6859).
+
 ## [0.8.0-nixos.3] - 2026-11-25
 
 ### Changed
@@ -121,7 +141,8 @@ history is in the [upstream changelog](https://github.com/mikluko/karpenter-prov
 - **Breaking:** the `talos` and `ubuntu` image families; `debian` is the only one.
 - The chart's Artifact Hub annotations.
 
-[Unreleased]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0-nixos.3...HEAD
+[Unreleased]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0...HEAD
+[0.8.0]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0-nixos.3...v0.8.0
 [0.8.0-nixos.3]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0-nixos.2...v0.8.0-nixos.3
 [0.8.0-nixos.2]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.8.0-nixos.1...v0.8.0-nixos.2
 [0.8.0-nixos.1]: https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/compare/v0.7.1...v0.8.0-nixos.1
