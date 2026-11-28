@@ -1,4 +1,4 @@
-module sarak.sh/mikluko/karpenter-provider-hetzner/tools
+module sarak.sh/karpenter/provider-hetzner/tools
 
 go 1.27.4
 

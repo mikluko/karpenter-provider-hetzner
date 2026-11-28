@@ -22,10 +22,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	apiv1 "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/bootstrap"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/metrics"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
+	apiv1 "sarak.sh/karpenter/provider-hetzner/pkg/apis/v1"
+	"sarak.sh/karpenter/provider-hetzner/pkg/bootstrap"
+	"sarak.sh/karpenter/provider-hetzner/pkg/metrics"
+	"sarak.sh/karpenter/provider-hetzner/pkg/providers/imagefamily"
 )
 
 const resyncInterval = 5 * time.Minute

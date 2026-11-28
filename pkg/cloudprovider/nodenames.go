@@ -18,7 +18,7 @@ import (
 	karpv1 "sigs.k8s.io/karpenter/pkg/apis/v1"
 	karpcp "sigs.k8s.io/karpenter/pkg/cloudprovider"
 
-	apiv1 "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
+	apiv1 "sarak.sh/karpenter/provider-hetzner/pkg/apis/v1"
 )
 
 // defaultNodeNameTemplate is the CRD default of nodeNameTemplates, for a node

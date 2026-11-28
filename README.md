@@ -1,6 +1,6 @@
 # karpenter-provider-hetzner (fork)
 
-[![Release](https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/badges/workflows/release.yaml/badge.svg)](https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/actions?workflow=release.yaml)
+[![Release](https://forge.sarak.sh/karpenter/provider-hetzner/badges/workflows/release.yaml/badge.svg)](https://forge.sarak.sh/karpenter/provider-hetzner/actions?workflow=release.yaml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 A [Karpenter](https://karpenter.sh) cloud provider for
@@ -93,7 +93,7 @@ say the CRDs changed, apply them before upgrading the chart:
 1. Apply the CRDs of the release, with `<version>` naming it, for example `v0.1.0`:
 
    ```bash
-   BASE=https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/raw/tag/<version>/charts/karpenter-provider-hetzner/crds
+   BASE=https://forge.sarak.sh/karpenter/provider-hetzner/raw/tag/<version>/charts/karpenter-provider-hetzner/crds
    kubectl apply --server-side --force-conflicts \
      -f $BASE/karpenter.hetzner.cloud_hcloudnodeclasses.yaml \
      -f $BASE/karpenter.sh_nodeclaims.yaml \

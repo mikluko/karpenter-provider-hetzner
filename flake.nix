@@ -96,7 +96,7 @@
             Entrypoint = [ (lib.getExe (controllerFor pkgs "linux" goarch)) ];
             User = "65532:65532";
             Labels = {
-              "org.opencontainers.image.source" = "https://sarak.sh/mikluko/karpenter-provider-hetzner";
+              "org.opencontainers.image.source" = "https://sarak.sh/karpenter/provider-hetzner";
               "org.opencontainers.image.revision" = commit;
               "org.opencontainers.image.version" = version;
             };

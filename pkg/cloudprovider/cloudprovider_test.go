@@ -24,12 +24,12 @@ import (
 	"sigs.k8s.io/karpenter/pkg/controllers/node/health"
 	"sigs.k8s.io/karpenter/pkg/operator/options"
 
-	apiv1 "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/bootstrap"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/cloudprovider"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/providers/instance"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/providers/instancetype"
+	apiv1 "sarak.sh/karpenter/provider-hetzner/pkg/apis/v1"
+	"sarak.sh/karpenter/provider-hetzner/pkg/bootstrap"
+	"sarak.sh/karpenter/provider-hetzner/pkg/cloudprovider"
+	"sarak.sh/karpenter/provider-hetzner/pkg/providers/imagefamily"
+	"sarak.sh/karpenter/provider-hetzner/pkg/providers/instance"
+	"sarak.sh/karpenter/provider-hetzner/pkg/providers/instancetype"
 )
 
 const testAPIServerURL = "https://10.0.0.2:6443"

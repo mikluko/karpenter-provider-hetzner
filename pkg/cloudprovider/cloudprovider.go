@@ -22,12 +22,12 @@ import (
 	karpcp "sigs.k8s.io/karpenter/pkg/cloudprovider"
 	"sigs.k8s.io/karpenter/pkg/scheduling"
 
-	apiv1 "sarak.sh/mikluko/karpenter-provider-hetzner/pkg/apis/v1"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/bootstrap"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/metrics"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/providers/imagefamily"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/providers/instance"
-	"sarak.sh/mikluko/karpenter-provider-hetzner/pkg/providers/instancetype"
+	apiv1 "sarak.sh/karpenter/provider-hetzner/pkg/apis/v1"
+	"sarak.sh/karpenter/provider-hetzner/pkg/bootstrap"
+	"sarak.sh/karpenter/provider-hetzner/pkg/metrics"
+	"sarak.sh/karpenter/provider-hetzner/pkg/providers/imagefamily"
+	"sarak.sh/karpenter/provider-hetzner/pkg/providers/instance"
+	"sarak.sh/karpenter/provider-hetzner/pkg/providers/instancetype"
 )
 
 const providerName = "hetzner"
