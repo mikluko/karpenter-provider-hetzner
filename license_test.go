@@ -22,7 +22,7 @@ func TestGoFilesCarryLicenseHeader(t *testing.T) {
 			return err
 		}
 		if d.IsDir() {
-			if path != "." && (strings.HasPrefix(d.Name(), ".") || d.Name() == "bin") {
+			if path != "." && (strings.HasPrefix(d.Name(), ".") || d.Name() == "bin" || d.Name() == "vendor") {
 				return filepath.SkipDir
 			}
 			return nil

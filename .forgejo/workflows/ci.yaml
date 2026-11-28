@@ -1,43 +1,35 @@
 name: CI
 
-# On main, ci runs only as the first job of release-cut.yaml.
+# On main, ci runs only as a job of release.yaml, on the commit it releases.
 on:
   pull_request:
   workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  # The tests and the linter are flake checks: they run in the nix sandbox,
+  # with the toolchain flake.lock pins. Building the packages catches a
+  # vendorHash that go.mod has outgrown.
+  check:
+    runs-on: nixos
     steps:
       - uses: https://github.com/actions/checkout@v7
-      - uses: https://github.com/actions/setup-go@v7
         with:
-          go-version-file: go.mod
-          cache: false
-      - uses: https://github.com/actions/cache@v6
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: go-test-${{ hashFiles('go.sum', 'tools/go.sum') }}
-          restore-keys: go-test-
-      - run: go tool -modfile=tools/go.mod task test
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: https://github.com/actions/checkout@v7
-      - uses: https://github.com/actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-      - uses: https://github.com/golangci/golangci-lint-action@v9
-        with:
-          version: latest
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+      - run: nix flake check --print-build-logs
+      - run: nix build --print-build-logs --no-link .#default .#image-amd64 .#image-arm64
 
   generate:
     runs-on: ubuntu-latest
     steps:
       - uses: https://github.com/actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
       - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
@@ -55,6 +47,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: https://github.com/actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
       - uses: https://github.com/actions/setup-go@v7
         with:
           go-version-file: go.mod
@@ -79,6 +74,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: https://github.com/actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
       - uses: https://github.com/azure/setup-helm@v5
         with:
           version: v4.3.1
@@ -132,4 +130,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: https://sarak.sh/mikluko/changelog@v1
+      # A change no user sees carries no note.
+      - uses: https://sarak.sh/mikluko/changelog/actions/validate@v2
+        with:
+          warn: missing-fragment

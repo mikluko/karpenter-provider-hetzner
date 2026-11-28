@@ -1,6 +1,6 @@
 # karpenter-provider-hetzner (fork)
 
-[![CI](https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/badges/workflows/release-cut.yaml/badge.svg)](https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/actions?workflow=release-cut.yaml)
+[![Release](https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/badges/workflows/release.yaml/badge.svg)](https://forge.sarak.sh/mikluko/karpenter-provider-hetzner/actions?workflow=release.yaml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 A [Karpenter](https://karpenter.sh) cloud provider for

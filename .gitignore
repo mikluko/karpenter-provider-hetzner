@@ -1,4 +1,11 @@
+.*
+!.gitignore
+!.changelog
+!.forgejo
+!.golangci.yml
+
 bin/
+/result*
 *.exe
 *.test
 *.out

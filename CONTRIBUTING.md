@@ -6,6 +6,7 @@ Thanks for your interest in improving `karpenter-provider-hetzner`. This documen
 
 - Go (see the `go` directive in [`go.mod`](go.mod)).
 - [`task`](https://taskfile.dev), `git`, and `helm` (for chart changes).
+- [Nix](https://nixos.org) with flakes, for `task check` and the image; `nix develop` gives Go, golangci-lint, task and helm.
 - A Hetzner Cloud API token is only needed for end-to-end testing, not for unit tests.
 
 ## Common tasks
@@ -17,7 +18,7 @@ task generate    # regenerate the CRD and deepcopy from the Go types
 task build       # build the controller binary into ./bin
 ```
 
-CI runs `task test`, `golangci-lint`, `task generate-verify` (fails if generated files are stale), and the controller tests. Run these locally before opening a pull request.
+CI runs `nix flake check`, which runs the tests and golangci-lint in the Nix sandbox (`task check` locally), builds the binary and both images, and runs `task generate-verify` (fails if generated files are stale) and the controller tests. Run these locally before opening a pull request.
 
 ## Code generation
 
@@ -38,16 +39,16 @@ The `HCloudNodeClass` CRD and `zz_generated.deepcopy.go` are generated from the 
 
 ## Releases
 
-`CHANGELOG.md` decides the version. To release, rename `## [Unreleased]` to
-`## [X.Y.Z] - YYYY-MM-DD`, open a fresh `## [Unreleased]` above it, and merge
-on the date you wrote.
+A pull request with a notable change adds its note as a fragment in
+`.changelog/`. Running the Release workflow on `main` releases the version the
+fragments call for: it folds them into `CHANGELOG.md`, commits that with
+`VERSION` to `main`, and publishes the image
+`sarak.sh/mikluko/karpenter-provider-hetzner:<version>`, the chart
+`oci://sarak.sh/mikluko/charts/karpenter-provider-hetzner` and, last, the tag
+`v<version>`.
 
-On a push to `main`, `release-cut.yaml` runs CI, then tags the commit `vX.Y.Z`
-when the newest entry names a version no tag carries. The tag starts
-`release-roll.yaml`, which builds and publishes the image and the chart, and
-creates the forge release last. A tag whose `release-roll.yaml` run failed
-is not cut again: re-run that run. Run by hand, `release-roll.yaml` builds the
-newest version without publishing it.
+With `prerelease` ticked it publishes `<version>-pre.N` from `main` as it
+stands instead, and commits nothing.
 
 ## Reporting bugs and requesting features
 
